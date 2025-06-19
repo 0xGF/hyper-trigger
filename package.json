@@ -1,0 +1,30 @@
+{
+  "name": "hyper-trigger",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "dev:frontend": "cd apps/frontend && pnpm dev",
+    "dev:worker": "cd apps/worker && pnpm dev",
+    "deploy:testnet": "turbo run deploy:testnet",
+    "deploy:mainnet": "turbo run deploy:mainnet"
+  },
+  "devDependencies": {
+    "turbo": "^1.11.2",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.14.0"
+} 
