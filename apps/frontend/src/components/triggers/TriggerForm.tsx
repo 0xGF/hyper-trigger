@@ -128,6 +128,7 @@ export function TriggerForm() {
   const [error, setError] = useState<string | null>(null)
   const [swapError, setSwapError] = useState<string | null>(null)
   const [initialPriceSet, setInitialPriceSet] = useState(false)
+  const [liveCurrentPrice, setLiveCurrentPrice] = useState<number | undefined>(undefined)
   
   // Real user triggers data - empty for now since no backend
   const [userTriggers] = useState<UserTrigger[]>([])
@@ -351,6 +352,9 @@ export function TriggerForm() {
   const handleTriggerTokenSelect = (symbol: string) => {
     updateFormData('triggerToken', symbol)
     
+    // Reset live price when changing tokens
+    setLiveCurrentPrice(undefined)
+    
     // Auto-set trigger price to current price when changing trigger token
     const currentPrice = prices[symbol]
     if (currentPrice && currentPrice > 0) {
@@ -411,17 +415,10 @@ export function TriggerForm() {
     return triggerPrice > currentPrice ? '>' : '<'
   }, [formData.triggerPrice, selectedTriggerToken, prices])
 
-  // Calculate focus ring color based on trigger vs current price
+  // Calculate focus ring color - always orange to match trigger line on chart
   const getTriggerInputColor = useMemo(() => {
-    const triggerPrice = parseFloat(formData.triggerPrice)
-    const currentPrice = selectedTriggerToken ? prices[selectedTriggerToken.symbol] : 0
-    
-    if (!triggerPrice || !currentPrice) {
-      return 'primary' // Default color
-    }
-    
-    return triggerPrice > currentPrice ? 'green' : 'red'
-  }, [formData.triggerPrice, selectedTriggerToken, prices])
+    return 'orange' // Consistent orange color to match chart trigger line
+  }, [])
 
   // Update condition automatically when trigger price changes
   useEffect(() => {
@@ -697,6 +694,7 @@ export function TriggerForm() {
                 symbol={selectedTriggerToken.symbol} 
                 triggerPrice={parseFloat(formData.triggerPrice) || undefined}
                 onTriggerPriceChange={handleTriggerPriceReset}
+                onCurrentPriceChange={setLiveCurrentPrice}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground bg-[#0a0a0a]">
@@ -805,10 +803,10 @@ export function TriggerForm() {
                   onTokenSelect={() => setShowTriggerTokenModal(true)}
                   triggerPrice={formData.triggerPrice}
                   onPriceChange={(value) => updateFormData('triggerPrice', value)}
-                  currentPrice={selectedTriggerToken ? prices[selectedTriggerToken.symbol] : undefined}
+                  currentPrice={liveCurrentPrice || (selectedTriggerToken ? prices[selectedTriggerToken.symbol] : undefined)}
                   condition={autoCondition}
                   onConditionChange={() => {}}
-                  focusColor={getTriggerInputColor}
+                  focusColor={getTriggerInputColor as 'green' | 'orange' | 'red' | 'primary'}
                 />
               </motion.div>
 

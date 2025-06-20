@@ -17,7 +17,7 @@ interface TriggerInputProps {
   condition: '>' | '<'
   onConditionChange: (condition: '>' | '<') => void
   disabled?: boolean
-  focusColor?: 'green' | 'red' | 'primary'
+  focusColor?: 'green' | 'red' | 'primary' | 'orange'
 }
 
 export function TriggerInput({
@@ -85,6 +85,11 @@ export function TriggerInput({
         return {
           focused: 'border-red-500',
           unfocused: 'border-red-500/50 hover:border-red-500'
+        }
+      case 'orange':
+        return {
+          focused: 'border-orange-500',
+          unfocused: 'border-orange-500/50 hover:border-orange-500'
         }
       default:
         return {

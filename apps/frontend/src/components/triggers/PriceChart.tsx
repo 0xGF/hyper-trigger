@@ -12,6 +12,7 @@ interface PriceChartProps {
   symbol: string
   triggerPrice?: number
   onTriggerPriceChange?: (price: number) => void
+  onCurrentPriceChange?: (price: number) => void
 }
 
 interface Candle {
@@ -39,7 +40,7 @@ interface OrderBook {
   time: number
 }
 
-export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: PriceChartProps) {
+export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurrentPriceChange }: PriceChartProps) {
   const [candles, setCandles] = useState<Candle[]>([])
   const [orderBook, setOrderBook] = useState<OrderBook | null>(null)
   const [currentPrice, setCurrentPrice] = useState<number>(0)
@@ -54,6 +55,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
     time: string
     visible: boolean
   }>({ price: 0, time: '', visible: false })
+  const [isFirstDataLoad, setIsFirstDataLoad] = useState(true)
   
   const wsRef = useRef<WebSocket | null>(null)
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -62,6 +64,15 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const prevSymbolRef = useRef<string>('')
   const triggerLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const triggerLineCleanupRef = useRef<(() => void) | null>(null)
+
+  // Map UI intervals to Hyperliquid API intervals
+  const getHyperliquidInterval = useCallback((interval: string) => {
+    switch (interval) {
+      case '1D': return '1d'  // Hyperliquid expects lowercase 'd'
+      default: return interval
+    }
+  }, [])
 
   // Animation variants
   const containerVariants = {
@@ -186,6 +197,8 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
           shiftVisibleRangeOnNewBar: false,
           lockVisibleTimeRangeOnResize: true,
           rightBarStaysOnScroll: false,
+          fixLeftEdge: false,
+          fixRightEdge: false,
         },
         handleScroll: {
           mouseWheel: true,
@@ -239,13 +252,11 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
       })
 
       // Only position chart on very first initialization, not on recreations
-      // This prevents constant auto-adjustment and resizing
       if (!prevSymbolRef.current) {
         // First time loading - position to show recent data
         setTimeout(() => {
           if (chartRef.current) {
             chartRef.current.timeScale().fitContent()
-            chartRef.current.timeScale().scrollToRealTime()
           }
         }, 500)
       }
@@ -401,19 +412,22 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
     try {
       setCandlesLoading(true)
       
+      // Map UI intervals to Hyperliquid API intervals
+      const apiInterval = getHyperliquidInterval(targetInterval)
+      
       let daysBack = 300 // Default for longer timeframes
       if (targetInterval === '1m') {
-        daysBack = 3 // 1 minute data for 3 days
+        daysBack = 6 // 1 minute data for 12 days
       } else if (targetInterval === '5m') {
-        daysBack = 14 // 5 minute data for 2 weeks
+        daysBack = 28 // 5 minute data for 5 weeks
       } else if (targetInterval === '15m') {
-        daysBack = 30 // 15 minute data for 1 month
+        daysBack = 60 // 15 minute data for 2 month
       } else if (targetInterval === '1h') {
-        daysBack = 90 // 1 hour data for 3 months
+        daysBack = 180 // 1 hour data for 6 months
       } else if (targetInterval === '4h') {
-        daysBack = 365 // 4 hour data for 1 year
+        daysBack = 240 // 4 hour data for 4 months (1440 candles)
       } else if (targetInterval === '1D' || targetInterval === 'D') {
-        daysBack = 730 // Daily data for 2 years
+        daysBack = 365 // Daily data for 1 year instead of 3 years - test if large dataset causes drift
       }
       
       const response = await fetch('https://api.hyperliquid.xyz/info', {
@@ -423,7 +437,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
           type: 'candleSnapshot',
           req: {
             coin: symbol,
-            interval: targetInterval,
+            interval: apiInterval, // Use mapped interval
             startTime: Date.now() - (daysBack * 24 * 60 * 60 * 1000),
             endTime: Date.now()
           }
@@ -475,7 +489,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
 
         ws.send(JSON.stringify({
           method: 'subscribe',
-          subscription: { type: 'candle', coin: symbol, interval }
+          subscription: { type: 'candle', coin: symbol, interval: getHyperliquidInterval(interval) }
         }))
       }
 
@@ -542,7 +556,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         method: 'subscribe',
-        subscription: { type: 'candle', coin: symbol, interval: newInterval }
+        subscription: { type: 'candle', coin: symbol, interval: getHyperliquidInterval(newInterval) }
       }))
     }
     
@@ -563,11 +577,17 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
       if (wsRef.current) {
         wsRef.current.close()
       }
+      // Clean up trigger line event listeners
+      if (triggerLineCleanupRef.current) {
+        triggerLineCleanupRef.current()
+        triggerLineCleanupRef.current = null
+      }
       if (chartRef.current) {
         chartRef.current.remove()
         chartRef.current = null
         candlestickSeriesRef.current = null
         volumeSeriesRef.current = null
+        triggerLineSeriesRef.current = null
       }
       setChartVisible(false)
     }
@@ -584,7 +604,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
     if (chartReady && candles.length > 0) {
       updateChartData()
     }
-  }, [candles, chartReady, updateChartData])
+  }, [chartReady, updateChartData]) // Removed 'candles' dependency to prevent drift on real-time updates
 
   // Show chart when data loads after interval change
   useEffect(() => {
@@ -592,11 +612,10 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
       // Data has finished loading, show the chart
       setTimeout(() => {
         setChartVisible(true)
-        // Let users maintain their current chart position
-        // No auto-adjustment to avoid unwanted resizing
+        setIsFirstDataLoad(false)
       }, 200) // Small delay to ensure chart is updated
     }
-  }, [candlesLoading, candles.length, chartReady])
+  }, [candlesLoading, chartReady, isFirstDataLoad, symbol])
 
   // Handle symbol changes explicitly
   useEffect(() => {
@@ -605,6 +624,9 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
       setCandles([])
       setOrderBook(null)
       setCurrentPrice(0)
+      
+      // Reset first data load flag for new symbol
+      setIsFirstDataLoad(true)
       
       // Fade out chart during transition
       setChartVisible(false)
@@ -621,9 +643,22 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
     }
   }, [symbol])
 
+  // Notify parent of current price changes
+  useEffect(() => {
+    if (currentPrice > 0 && onCurrentPriceChange) {
+      onCurrentPriceChange(currentPrice)
+    }
+  }, [currentPrice, onCurrentPriceChange])
+
   // Add trigger price line to chart
   const updateTriggerLine = useCallback(() => {
     if (!chartReady || !chartRef.current) return
+
+    // Clean up previous trigger line and its event listeners
+    if (triggerLineCleanupRef.current) {
+      triggerLineCleanupRef.current()
+      triggerLineCleanupRef.current = null
+    }
 
     // Remove existing trigger line with safety check
     if (triggerLineSeriesRef.current && chartRef.current) {
@@ -640,13 +675,20 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
       try {
         const triggerLineSeries = chartRef.current.addSeries(LineSeries, {
           color: '#FF8C00', // Orange color
-          lineWidth: 2,
-          lineStyle: 1, // Dashed line
-          priceLineVisible: true, // Show price line on the right axis
-          lastValueVisible: true,
+          lineWidth: 1, // Thicker line for better visibility
+          lineStyle: 1, // Solid line (not dashed)
+          priceLineVisible: true, // Hide price line to prevent scaling issues
+          lastValueVisible: true, // Hide last value marker to prevent scaling issues
           crosshairMarkerVisible: true,
-          title: `Trigger: $${formatPrice(triggerPrice)}`
+          title: `Trigger: $${formatPrice(triggerPrice)}`,
+          // Prevent this series from affecting chart auto-scaling
+          autoscaleInfoProvider: () => null,
+          // Don't include in fit content calculations
+          visible: true,
+          priceScaleId: 'right' // Use main price scale but prevent scaling
         })
+
+        // Remove the separate price scale configuration since we're using main scale
 
         // Create a horizontal line that spans a very wide time range
         // This ensures it's always visible regardless of chart navigation
@@ -890,78 +932,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
               
               {/* Chart Control Buttons */}
               <div className="flex items-center gap-1">
-                <motion.button
-                  onClick={() => {
-                    if (chartRef.current) {
-                      chartRef.current.timeScale().fitContent()
-                    }
-                  }}
-                  className="px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Fit all data"
-                >
-                  Fit
-                </motion.button>
-                <motion.button
-                  onClick={() => {
-                    if (chartRef.current) {
-                      chartRef.current.timeScale().scrollToRealTime()
-                    }
-                  }}
-                  className="px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Go to latest"
-                >
-                  Latest
-                </motion.button>
-                <motion.button
-                  onClick={() => {
-                    if (chartRef.current) {
-                      const timeScale = chartRef.current.timeScale()
-                      const visibleRange = timeScale.getVisibleRange()
-                      if (visibleRange) {
-                        const timeSpan = (visibleRange.to as number) - (visibleRange.from as number)
-                        const newSpan = timeSpan * 0.5 // Zoom in 2x
-                        const center = ((visibleRange.from as number) + (visibleRange.to as number)) / 2
-                        timeScale.setVisibleRange({
-                          from: (center - newSpan / 2) as Time,
-                          to: (center + newSpan / 2) as Time
-                        })
-                      }
-                    }
-                  }}
-                  className="px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Zoom in"
-                >
-                  +
-                </motion.button>
-                <motion.button
-                  onClick={() => {
-                    if (chartRef.current) {
-                      const timeScale = chartRef.current.timeScale()
-                      const visibleRange = timeScale.getVisibleRange()
-                      if (visibleRange) {
-                        const timeSpan = (visibleRange.to as number) - (visibleRange.from as number)
-                        const newSpan = timeSpan * 2 // Zoom out 2x
-                        const center = ((visibleRange.from as number) + (visibleRange.to as number)) / 2
-                        timeScale.setVisibleRange({
-                          from: (center - newSpan / 2) as Time,
-                          to: (center + newSpan / 2) as Time
-                        })
-                      }
-                    }
-                  }}
-                  className="px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Zoom out"
-                >
-                  -
-                </motion.button>
+                {/* Chart navigation via keyboard shortcuts */}
               </div>
             </div>
             
@@ -1030,22 +1001,6 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Current Price Indicator */}
-            {currentPrice > 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="absolute top-2 right-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 text-xs z-10"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                  <div className="text-foreground font-medium">
-                    Live: ${formatPrice(currentPrice)}
-                  </div>
-                </div>
-              </motion.div>
-            )}
             
             <motion.div
               ref={chartContainerRef}
@@ -1059,7 +1014,9 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange }: Price
                 duration: 0.5, 
                 ease: "easeInOut" 
               }}
-            />
+            >
+              {/* Chart container - trigger arrows removed as they weren't working properly */}
+            </motion.div>
             
             <AnimatePresence>
               {candlesLoading && (
