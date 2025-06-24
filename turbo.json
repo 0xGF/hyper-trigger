@@ -4,25 +4,33 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "artifacts/**", "cache/**"]
     },
     "lint": {},
     "dev": {
       "cache": false,
       "persistent": true
     },
+    "dev:worker": {
+      "cache": false,
+      "persistent": true
+    },
     "test": {
       "dependsOn": ["build"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"]
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx", "contracts/**/*.sol"]
     },
     "clean": {
       "cache": false
     },
+    "compile": {
+      "dependsOn": ["^build"],
+      "outputs": ["artifacts/**", "cache/**", "src/types/**"]
+    },
     "deploy:testnet": {
-      "dependsOn": ["build"]
+      "dependsOn": ["compile"]
     },
     "deploy:mainnet": {
-      "dependsOn": ["build", "test"]
+      "dependsOn": ["compile", "test"]
     }
   }
 } 

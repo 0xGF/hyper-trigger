@@ -1,208 +1,108 @@
-// 🎯 HYPER-TRIGGER CONSTANTS
-// Centralized configuration for all token allowlists, defaults, and constraints
-// Based on HyperCore ↔ HyperEVM architecture research
+// 🎯 TRIGGER FORM CONSTANTS
+// Contract addresses, trading rules, and validation functions only
+// All token data comes from unified @/lib/tokens
 
-// ===== CORE TRADING CONSTRAINTS =====
-// USDC is the base pair for all spot trading on Hyperliquid
-// All swaps must have USDC on one side (USDC→Token or Token→USDC)
-export const TRADING_RULES = {
-  // USDC must always be either the FROM or TO token in swaps
-  REQUIRES_USDC_PAIR: true,
-  
-  // Base quote currency for all trading pairs
-  BASE_QUOTE_CURRENCY: 'USDC',
-  
-  // Minimum swap amounts (in USD equivalent)
-  MIN_SWAP_AMOUNT: 1.0,
-  MAX_SWAP_AMOUNT: 1000000.0,
-  
-  // Default slippage tolerances
-  DEFAULT_SLIPPAGE: '0.5',
-  SLIPPAGE_OPTIONS: ['0.5', '1.0', '5.0']
+import type { Abi } from 'viem'
+// 🎯 IMPORT FROM UNIFIED TOKEN SYSTEM
+import { 
+  getAllTokens, 
+  getToken,
+  getAssetIndex,
+  getTokenSymbol,
+  getSupportedOracleTokens
+} from '@/lib/tokens'
+
+// 🔄 UPDATED: Use new deployed contracts
+import { CONTRACTS as NEW_CONTRACTS, TRIGGER_CONTRACT_ABI } from '@/lib/contracts'
+
+// Contract configuration
+export const CONTRACTS = {
+  TRIGGER_CONTRACT: {
+    ADDRESS: NEW_CONTRACTS.TriggerContract,
+    CHAIN_ID: 998, // HyperEVM Testnet
+  },
 } as const
 
-// ===== STABLECOINS =====
-// All recognized stablecoins for USD calculations and pairing rules
-export const STABLECOINS = [
-  'USDC',    // Primary base currency
-  'USDT',    // Secondary stablecoin
-  'DAI',     // Decentralized stablecoin
-  'BUSD',    // Binance USD (legacy)
-  'FEUSD',   // Hyperliquid native stablecoin
-  'USDHL'    // Hyperliquid USD
-] as const
+// Use the proper ABI from contracts
+export const TRIGGER_MANAGER_ABI = TRIGGER_CONTRACT_ABI
 
-// ===== TOKEN ALLOWLISTS =====
-export const ALLOWED_ASSETS = {
-  // For trigger monitoring: Major tokens with reliable price feeds
-  // Supports both HyperCore perpetuals and spot assets
-  trigger: [
-    'BTC', 'ETH', 'SOL',           // Major cryptocurrencies
-    'HYPE',                        // Native HyperEVM token
-    'FARTCOIN',                    // Popular meme token
-    'TRUMP', 'WIF', 'PEPE'         // Additional meme tokens
-  ],
-  
-  // For spot trading: ONLY verified Core + EVM assets with USDC pairs
-  // REMOVED PURR - it's EVM-only, not Core + EVM
-  spot: [
-    'USDC',                        // Base quote currency (always included)
-    'BTC', 'ETH', 'SOL',          // Major cryptocurrencies (Core + EVM)
-    'HYPE',                        // Native token (Core + EVM)
-    'FARTCOIN'                     // Popular meme token (Core + EVM)
-  ]
-} as const
-
-// ===== LAYER ARCHITECTURE =====
-// HyperCore ↔ HyperEVM Layer Information
-export const TOKEN_LAYERS = {
-  // Available on both HyperCore and HyperEVM (preferred for trading)
-  BOTH: ['BTC', 'ETH', 'SOL', 'USDC', 'USDT', 'HYPE', 'FARTCOIN'],
-  
-  // Primarily HyperCore (perpetuals + some spot)
-  CORE: ['TRUMP', 'WIF', 'PEPE', 'BONK'],
-  
-  // Primarily HyperEVM (ERC-20 tokens) - NOT available for Core spot trading
-  EVM: ['PURR', 'DHYPE', 'WHYPE']
-} as const
-
-// ===== UI PRIORITIZATION =====
-// Major tokens prioritized in UI (Core + EVM availability only)
-export const MAJOR_TOKENS = [
-  'USDC',      // Primary base currency
-  'BTC',       // Bitcoin
-  'ETH',       // Ethereum
-  'SOL',       // Solana
-  'HYPE',      // Native HyperEVM token
-  'FARTCOIN'   // Popular meme token
-] as const
-
-// ===== DEFAULT SELECTIONS =====
-// Default token selections for optimal UX
+// Default token selections - UPDATED for new contract
 export const DEFAULT_TOKENS = {
-  trigger: 'BTC',        // Most reliable price feed
-  sell: 'USDC',         // Stable base currency (enforces USDC pairing)
-  buy: 'FARTCOIN'       // Popular meme token for demo
+  sell: 'USDC',    // ✅ TriggerContract uses USDC as input (stable refunds)
+  buy: 'BTC',      // Can buy any supported token
+  trigger: 'BTC',  // Can monitor any token with oracle price
 } as const
 
-// ===== SWAP VALIDATION =====
-// Helper functions to validate swap pairs
-export const validateSwapPair = (fromToken: any, toToken: any): boolean => {
-  // One token must be USDC (base currency requirement)
-  const hasUSDC = fromToken === 'USDC' || toToken === 'USDC'
+// Trading rules
+export const TRADING_RULES = {
+  MIN_SWAP_AMOUNT: 1, // $1 minimum
+  MAX_SWAP_AMOUNT: 1000000, // $1M maximum
+  DEFAULT_SLIPPAGE: '1.0', // 1%
+  SLIPPAGE_OPTIONS: ['0.5', '1.0', '2.0', '5.0'],
+  GAS_ESTIMATE: 0.01, // ~0.01 HYPE execution reward
+} as const
+
+// Trading validation using unified tokens - UPDATED for USDC-only
+export function validateSwapPair(fromToken: string, toToken: string): boolean {
+  const allTokens = getAllTokens()
+  const fromExists = allTokens.some(token => token.symbol === fromToken)
+  const toExists = allTokens.some(token => token.symbol === toToken)
   
-  // Both tokens must be in the spot allowlist
-  const fromAllowed = ALLOWED_ASSETS.spot.includes(fromToken)
-  const toAllowed = ALLOWED_ASSETS.spot.includes(toToken)
+  // Basic validation
+  if (!fromExists || !toExists || fromToken === toToken) {
+    return false
+  }
   
-  return hasUSDC && fromAllowed && toAllowed
+  // ✅ NEW CONTRACT: Only USDC can be used as input for triggers
+  if (fromToken !== 'USDC') {
+    return false
+  }
+  
+  return true
 }
 
-export const getSwapDirection = (fromToken: any, toToken: any): 'buy' | 'sell' | 'invalid' => {
-  if (!validateSwapPair(fromToken, toToken)) return 'invalid'
-  
-  if (fromToken === 'USDC') return 'buy'   // USDC → Token (buying token)
-  if (toToken === 'USDC') return 'sell'    // Token → USDC (selling token)
-  
-  return 'invalid' // Should never reach here if validation passes
+export function getSwapDirection(fromToken: string, toToken: string): 'buy' | 'sell' | 'swap' {
+  if (fromToken === 'USDC') return 'buy'
+  if (toToken === 'USDC') return 'sell'
+  return 'swap'
 }
 
-// ===== PRICE FORMATTING =====
-export const formatPrice = (price: number): string => {
+// Formatting helpers
+export function formatPrice(price: number): string {
   if (price >= 1000) {
-    // For large numbers, show all significant decimal places
-    return price.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 8, // Allow up to 8 decimal places
-      useGrouping: false // Remove commas for input compatibility
-    })
+    return price.toFixed(0)
   } else if (price >= 1) {
-    return price.toFixed(4)
+    return price.toFixed(2)
   } else {
-    return price.toFixed(8)
+    return price.toFixed(6)
   }
 }
 
-export const formatAmount = (amount: number): string => {
+export function formatAmount(amount: number): string {
   if (amount >= 1000000) {
     return (amount / 1000000).toFixed(2) + 'M'
   } else if (amount >= 1000) {
     return (amount / 1000).toFixed(2) + 'K'
   } else if (amount >= 1) {
-    return amount.toFixed(4)
+    return amount.toFixed(6)
   } else {
     return amount.toFixed(8)
   }
 }
 
-// ===== TOKEN METADATA =====
-// Full token names for display purposes
-export const TOKEN_NAMES: Record<string, string> = {
-  'BTC': 'Bitcoin',
-  'ETH': 'Ethereum', 
-  'SOL': 'Solana',
-  'USDC': 'USD Coin',
-  'USDT': 'Tether',
-  'HYPE': 'Hyperliquid',
-  'FARTCOIN': 'Fartcoin',
-  'TRUMP': 'Trump',
-  'WIF': 'Dogwifhat',
-  'PEPE': 'Pepe',
-  'BONK': 'Bonk',
-  'PURR': 'Purr'
-} as const
-
-// ===== UNIT TOKEN MAPPING =====
-// Maps Hyperliquid Unit tokens to standard symbols
-export const UNIT_TOKEN_MAP: Record<string, string> = {
-  'UBTC': 'BTC',      // Unit Bitcoin → Bitcoin
-  'UETH': 'ETH',      // Unit Ethereum → Ethereum  
-  'USOL': 'SOL',      // Unit Solana → Solana
-  'UFART': 'FARTCOIN', // Unit Fartcoin → Fartcoin
-  'HYPE': 'HYPE',     // HYPE stays HYPE
-  'USDC': 'USDC',     // USDC stays USDC
-  'USDT': 'USDT'      // USDT stays USDT
-} as const
-
-// ===== SYSTEM ADDRESSES =====
-// HyperCore system addresses for cross-layer bridging
-export const SYSTEM_ADDRESSES = {
-  HYPE_BRIDGE: '0x2222222222222222222222222222222222222222',
-  USDC_BASE: '0x2000000000000000000000000000000000000000',
-  BTC_BRIDGE: '0x200000000000000000000000000000000000c5',
-  ETH_BRIDGE: '0x200000000000000000000000000000000000dd',
-  SOL_BRIDGE: '0x200000000000000000000000000000000000fe',
-  FARTCOIN_BRIDGE: '0x200000000000000000000000000000000000010d'
-} as const
-
-// ===== VALIDATION HELPERS =====
-export const isStablecoin = (token: string): boolean => {
-  return STABLECOINS.includes(token as any)
+// Token capability helpers using unified system - UPDATED
+export function canUseAsInput(token: string): boolean {
+  // ✅ NEW CONTRACT: Only USDC can be used as input for stable refunds
+  return token === 'USDC'
 }
 
-export const isMajorToken = (token: string): boolean => {
-  return MAJOR_TOKENS.includes(token as any)
+export function canUseAsTrigger(token: string): boolean {
+  // Any token with oracle price can be used for trigger monitoring
+  const tokenData = getToken(token)
+  return tokenData?.oracleIndex !== undefined
 }
 
-export const isSpotTradeable = (token: string): boolean => {
-  return ALLOWED_ASSETS.spot.includes(token as any)
-}
+// Re-export oracle functions from unified system (for convenience)
+export { getAssetIndex, getTokenSymbol, getSupportedOracleTokens } from '@/lib/tokens'
 
-export const isTriggerMonitorable = (token: string): boolean => {
-  return ALLOWED_ASSETS.trigger.includes(token as any)
-}
-
-export const getTokenLayer = (token: string): 'both' | 'core' | 'evm' | 'unknown' => {
-  if (TOKEN_LAYERS.BOTH.includes(token as any)) return 'both'
-  if (TOKEN_LAYERS.CORE.includes(token as any)) return 'core'  
-  if (TOKEN_LAYERS.EVM.includes(token as any)) return 'evm'
-  return 'unknown'
-}
-
-// ===== TYPE EXPORTS =====
-export type StablecoinSymbol = typeof STABLECOINS[number]
-export type SpotAssetSymbol = typeof ALLOWED_ASSETS.spot[number]
-export type TriggerAssetSymbol = typeof ALLOWED_ASSETS.trigger[number]
-export type MajorTokenSymbol = typeof MAJOR_TOKENS[number]
-export type TokenLayer = 'both' | 'core' | 'evm' | 'unknown'
-export type SwapDirection = 'buy' | 'sell' | 'invalid'
+export type SwapDirection = 'buy' | 'sell' | 'swap'

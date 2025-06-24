@@ -13,6 +13,12 @@ interface PriceChartProps {
   triggerPrice?: number
   onTriggerPriceChange?: (price: number) => void
   onCurrentPriceChange?: (price: number) => void
+  activeTriggers?: Array<{
+    price: number
+    isAbove: boolean
+    id: string
+  }>
+  onCancelTrigger?: (triggerId: string) => void
 }
 
 interface Candle {
@@ -40,7 +46,7 @@ interface OrderBook {
   time: number
 }
 
-export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurrentPriceChange }: PriceChartProps) {
+export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurrentPriceChange, activeTriggers, onCancelTrigger }: PriceChartProps) {
   const [candles, setCandles] = useState<Candle[]>([])
   const [orderBook, setOrderBook] = useState<OrderBook | null>(null)
   const [currentPrice, setCurrentPrice] = useState<number>(0)
@@ -63,16 +69,8 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const prevSymbolRef = useRef<string>('')
-  const triggerLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const triggerLineSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())
   const triggerLineCleanupRef = useRef<(() => void) | null>(null)
-
-  // Map UI intervals to Hyperliquid API intervals
-  const getHyperliquidInterval = useCallback((interval: string) => {
-    switch (interval) {
-      case '1D': return '1d'  // Hyperliquid expects lowercase 'd'
-      default: return interval
-    }
-  }, [])
 
   // Animation variants
   const containerVariants = {
@@ -240,14 +238,10 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
           const price = Array.from(param.seriesData.values())[0]
           if (price && typeof price === 'object' && 'value' in price) {
             const date = new Date((param.time as number) * 1000)
-            setCrosshairInfo({
-              price: price.value as number,
-              time: date.toLocaleString(),
-              visible: true
-            })
+            setCrosshairInfo((prev: { price: number; time: string; visible: boolean }) => ({ ...prev, visible: true }))
           }
         } else {
-          setCrosshairInfo(prev => ({ ...prev, visible: false }))
+          setCrosshairInfo((prev: { price: number; time: string; visible: boolean }) => ({ ...prev, visible: false }))
         }
       })
 
@@ -310,7 +304,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
 
     try {
       // Validate candles data
-      const validCandles = candles.filter(candle => {
+      const validCandles = candles.filter((candle: Candle) => {
         const open = typeof candle.o === 'string' ? parseFloat(candle.o) : candle.o
         const high = typeof candle.h === 'string' ? parseFloat(candle.h) : candle.h
         const low = typeof candle.l === 'string' ? parseFloat(candle.l) : candle.l
@@ -330,7 +324,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
       const volumeUpColor = styles.getPropertyValue('--chart-volume-up').trim()
       const volumeDownColor = styles.getPropertyValue('--chart-volume-down').trim()
 
-      const chartData: CandlestickData[] = validCandles.map((candle) => {
+      const chartData: CandlestickData[] = validCandles.map((candle: Candle) => {
         const open = typeof candle.o === 'string' ? parseFloat(candle.o) : candle.o
         const high = typeof candle.h === 'string' ? parseFloat(candle.h) : candle.h
         const low = typeof candle.l === 'string' ? parseFloat(candle.l) : candle.l
@@ -343,7 +337,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
       })
 
       if (showVolume && volumeSeriesRef.current) {
-        const volumeData: HistogramData[] = validCandles.map((candle) => {
+        const volumeData: HistogramData[] = validCandles.map((candle: Candle) => {
           const volume = typeof candle.v === 'string' ? parseFloat(candle.v) : candle.v
           const close = typeof candle.c === 'string' ? parseFloat(candle.c) : candle.c
           const open = typeof candle.o === 'string' ? parseFloat(candle.o) : candle.o
@@ -413,7 +407,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
       setCandlesLoading(true)
       
       // Map UI intervals to Hyperliquid API intervals
-      const apiInterval = getHyperliquidInterval(targetInterval)
+      const apiInterval = targetInterval
       
       let daysBack = 300 // Default for longer timeframes
       if (targetInterval === '1m') {
@@ -489,7 +483,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
 
         ws.send(JSON.stringify({
           method: 'subscribe',
-          subscription: { type: 'candle', coin: symbol, interval: getHyperliquidInterval(interval) }
+          subscription: { type: 'candle', coin: symbol, interval: interval }
         }))
       }
 
@@ -556,7 +550,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         method: 'subscribe',
-        subscription: { type: 'candle', coin: symbol, interval: getHyperliquidInterval(newInterval) }
+        subscription: { type: 'candle', coin: symbol, interval: newInterval }
       }))
     }
     
@@ -587,7 +581,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
         chartRef.current = null
         candlestickSeriesRef.current = null
         volumeSeriesRef.current = null
-        triggerLineSeriesRef.current = null
+        triggerLineSeriesRef.current.clear()
       }
       setChartVisible(false)
     }
@@ -597,14 +591,14 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
   useEffect(() => {
     fetchHistoricalData(interval)
     connectWebSocket()
-  }, [symbol, interval]) // Only depend on symbol and interval, not the functions
+  }, [symbol, interval, fetchHistoricalData, connectWebSocket])
 
-  // Update chart
+  // Update chart - FIXED: Remove updateChartData dependency to prevent infinite loops
   useEffect(() => {
     if (chartReady && candles.length > 0) {
       updateChartData()
     }
-  }, [chartReady, updateChartData]) // Removed 'candles' dependency to prevent drift on real-time updates
+  }, [chartReady, candles, showVolume]) // Use direct dependencies instead of function
 
   // Show chart when data loads after interval change
   useEffect(() => {
@@ -643,87 +637,163 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
     }
   }, [symbol])
 
-  // Notify parent of current price changes
+  // Notify parent of current price changes - FIXED: Use useCallback to stabilize
   useEffect(() => {
     if (currentPrice > 0 && onCurrentPriceChange) {
       onCurrentPriceChange(currentPrice)
     }
-  }, [currentPrice, onCurrentPriceChange])
+  }, [currentPrice]) // Remove onCurrentPriceChange dependency to prevent loops
 
-  // Add trigger price line to chart
-  const updateTriggerLine = useCallback(() => {
-    if (!chartReady || !chartRef.current) return
+  // Add trigger price lines to chart for multiple triggers
+  const updateTriggerLines = useCallback(() => {
+    if (!chartReady || !chartRef.current || candles.length === 0) return
 
-    // Clean up previous trigger line and its event listeners
+    // Clean up previous trigger lines
     if (triggerLineCleanupRef.current) {
       triggerLineCleanupRef.current()
       triggerLineCleanupRef.current = null
     }
 
-    // Remove existing trigger line with safety check
-    if (triggerLineSeriesRef.current && chartRef.current) {
+    // Remove all existing trigger lines
+    triggerLineSeriesRef.current.forEach((series, id) => {
       try {
-        chartRef.current.removeSeries(triggerLineSeriesRef.current)
+        chartRef.current?.removeSeries(series)
       } catch (error) {
         console.warn('❌ Error removing trigger line series:', error)
       }
-      triggerLineSeriesRef.current = null
+    })
+    triggerLineSeriesRef.current.clear()
+
+    // Get time range from actual candle data to prevent auto-shifting
+    const firstCandleTime = candles[0]?.t / 1000
+    const lastCandleTime = candles[candles.length - 1]?.t / 1000
+    
+    if (!firstCandleTime || !lastCandleTime) {
+      console.warn('No valid candle time range for trigger lines')
+      return
     }
 
-    // Add new trigger line if price is set
+    // Ensure timestamps are different to avoid TradingView errors
+    const adjustedLastTime = firstCandleTime === lastCandleTime 
+      ? lastCandleTime + 1 
+      : lastCandleTime
+
+    // Add lines for all active triggers
+    if (activeTriggers && activeTriggers.length > 0) {
+      activeTriggers.forEach((trigger) => {
+        if (trigger.price > 0) {
+          try {
+            const color = trigger.isAbove ? '#22c55e' : '#ef4444' // Green for above, red for below
+            const triggerLineSeries = chartRef.current!.addSeries(LineSeries, {
+              color: color,
+              lineWidth: 1, // Slightly thicker for better visibility
+              lineStyle: 1, // Solid line
+              priceLineVisible: true,
+              lastValueVisible: true,
+              crosshairMarkerVisible: true,
+              title: `${trigger.isAbove ? '↗' : '↘'} $${formatPrice(trigger.price)} ✕`,
+              autoscaleInfoProvider: () => ({
+                priceRange: {
+                  minValue: trigger.price,
+                  maxValue: trigger.price,
+                },
+              }),
+              visible: true,
+              priceScaleId: 'right'
+            })
+
+            // Use actual chart time range to prevent shifting
+            const lineData = [
+              { time: firstCandleTime as Time, value: trigger.price },
+              { time: adjustedLastTime as Time, value: trigger.price }
+            ]
+            triggerLineSeries.setData(lineData)
+
+            // Add click handler for cancellation if callback provided
+            if (onCancelTrigger && chartRef.current) {
+              const clickHandler = (param: any) => {
+                if (param.seriesData && param.seriesData.get(triggerLineSeries)) {
+                  const confirmed = window.confirm(
+                    `Cancel trigger for ${trigger.isAbove ? 'above' : 'below'} $${formatPrice(trigger.price)}?`
+                  )
+                  if (confirmed) {
+                    onCancelTrigger(trigger.id)
+                  }
+                }
+              }
+              
+              chartRef.current.subscribeClick(clickHandler)
+              
+              // Store cleanup function
+              const existingCleanup = triggerLineCleanupRef.current
+              triggerLineCleanupRef.current = () => {
+                if (existingCleanup) existingCleanup()
+                chartRef.current?.unsubscribeClick(clickHandler)
+              }
+            }
+
+            triggerLineSeriesRef.current.set(trigger.id, triggerLineSeries)
+          } catch (error) {
+            console.error('❌ Error adding trigger line:', error)
+          }
+        }
+      })
+    }
+
+    // Also add the current form trigger line if it exists
     if (triggerPrice && triggerPrice > 0) {
       try {
         const triggerLineSeries = chartRef.current.addSeries(LineSeries, {
-          color: '#FF8C00', // Orange color
-          lineWidth: 1, // Thicker line for better visibility
-          lineStyle: 1, // Solid line (not dashed)
-          priceLineVisible: true, // Hide price line to prevent scaling issues
-          lastValueVisible: true, // Hide last value marker to prevent scaling issues
+          color: '#FF8C00', // Orange for current form trigger
+          lineWidth: 1,
+          lineStyle: 2, // Dashed line to distinguish from active triggers
+          priceLineVisible: true,
+          lastValueVisible: true,
           crosshairMarkerVisible: true,
-          title: `Trigger: $${formatPrice(triggerPrice)}`,
-          // Prevent this series from affecting chart auto-scaling
-          autoscaleInfoProvider: () => null,
-          // Don't include in fit content calculations
+          title: `New: $${formatPrice(triggerPrice)}`,
+          autoscaleInfoProvider: () => ({
+            priceRange: {
+              minValue: triggerPrice,
+              maxValue: triggerPrice,
+            },
+          }),
           visible: true,
-          priceScaleId: 'right' // Use main price scale but prevent scaling
+          priceScaleId: 'right'
         })
 
-        // Remove the separate price scale configuration since we're using main scale
-
-        // Create a horizontal line that spans a very wide time range
-        // This ensures it's always visible regardless of chart navigation
-        const now = Date.now() / 1000
-        const yearAgo = now - (365 * 24 * 60 * 60) // 1 year ago
-        const yearAhead = now + (365 * 24 * 60 * 60) // 1 year ahead
-        
+        // Use actual chart time range
         const lineData = [
-          { time: yearAgo as Time, value: triggerPrice },
-          { time: yearAhead as Time, value: triggerPrice }
+          { time: firstCandleTime as Time, value: triggerPrice },
+          { time: adjustedLastTime as Time, value: triggerPrice }
         ]
         triggerLineSeries.setData(lineData)
 
-        triggerLineSeriesRef.current = triggerLineSeries
+        triggerLineSeriesRef.current.set('form-trigger', triggerLineSeries)
       } catch (error) {
-        console.error('❌ Error adding trigger line:', error)
+        console.error('❌ Error adding form trigger line:', error)
       }
     }
-  }, [chartReady, triggerPrice, formatPrice])
+  }, [chartReady, candles]) // FIXED: Only depend on essential values, not functions
 
-  // Update trigger line when trigger price changes
+  // Update trigger lines when triggers or trigger price changes - FIXED: Remove function dependency
   useEffect(() => {
     if (chartReady) {
-      updateTriggerLine()
+      updateTriggerLines()
     }
-  }, [triggerPrice, chartReady, updateTriggerLine])
+  }, [triggerPrice, activeTriggers, chartReady, candles]) // Use direct dependencies
 
-  // Reset trigger line when symbol changes
+  // Reset trigger lines when symbol changes
   useEffect(() => {
     if (prevSymbolRef.current && prevSymbolRef.current !== symbol) {
-      // Remove trigger line when symbol changes
-      if (triggerLineSeriesRef.current && chartRef.current) {
-        chartRef.current.removeSeries(triggerLineSeriesRef.current)
-        triggerLineSeriesRef.current = null
-      }
+      // Remove all trigger lines when symbol changes
+      triggerLineSeriesRef.current.forEach((series, id) => {
+        try {
+          chartRef.current?.removeSeries(series)
+        } catch (error) {
+          console.warn('❌ Error removing trigger line on symbol change:', error)
+        }
+      })
+      triggerLineSeriesRef.current.clear()
       
       // Reset trigger price to current price of new asset if callback provided
       if (onTriggerPriceChange && currentPrice > 0) {
@@ -802,7 +872,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
   const maxBidSize = orderBook ? Math.max(...orderBook.levels[0].map(bid => parseFloat(bid.sz || '0'))) : 0
   const maxOrderSize = Math.max(maxAskSize, maxBidSize)
 
-  // Handle volume series changes without recreating chart
+  // Handle volume series changes without recreating chart - FIXED: Remove function dependency
   useEffect(() => {
     if (!chartReady || !chartRef.current) return
 
@@ -849,7 +919,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
         })
       }
     }
-  }, [showVolume, chartReady, candles, updateChartData])
+  }, [showVolume, chartReady, candles]) // FIXED: Remove updateChartData dependency
 
   return (
     <motion.div 
@@ -870,7 +940,9 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
           >
             <TokenIcon symbol={symbol} />
             <span className="text-base font-semibold">{symbol}-USD</span>
-            <Badge variant="outline" className="text-xs">Hyperliquid</Badge>
+            <Badge variant="outline" className="text-xs">
+              Hyperliquid
+            </Badge>
           </motion.div>
           
           <motion.div 
@@ -1001,7 +1073,7 @@ export function PriceChart({ symbol, triggerPrice, onTriggerPriceChange, onCurre
                 </motion.div>
               )}
             </AnimatePresence>
-            
+
             <motion.div
               ref={chartContainerRef}
               className="absolute inset-0 w-full h-full"

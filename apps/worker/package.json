@@ -11,33 +11,30 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.5",
-    
+    "@hyper-trigger/shared": "workspace:^",
     "@supabase/supabase-js": "^2.39.0",
-    
-    "viem": "^2.1.1",
-    "ethers": "^6.9.0",
-    
-    "bullmq": "^4.15.0",
-    "ioredis": "^5.3.2",
-    
-    "axios": "^1.6.2",
-    "ws": "^8.16.0",
+    "@types/dotenv": "^8.2.3",
+    "@types/node": "^20.10.5",
     "@types/ws": "^8.5.10",
-    
-    "dotenv": "^16.3.1",
+    "axios": "^1.6.2",
+    "bullmq": "^4.15.0",
+    "dotenv": "^16.5.0",
+    "ethers": "^6.9.0",
+    "ioredis": "^5.3.2",
+    "node-cron": "^3.0.3",
+    "typescript": "^5.3.3",
+    "viem": "^2.1.1",
     "winston": "^3.11.0",
-    "zod": "^3.22.4",
-    "node-cron": "^3.0.3"
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
-    "tsx": "^4.6.2",
-    "eslint": "^8.56.0",
+    "@types/jest": "^29.5.8",
+    "@types/node-cron": "^3.0.11",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
     "jest": "^29.7.0",
-    "@types/jest": "^29.5.8",
-    "@types/node-cron": "^3.0.11"
+    "tsx": "^4.6.2"
   }
-} 
+}
