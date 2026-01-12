@@ -135,18 +135,25 @@ export function getNetwork(): string {
 
 // ===========================================
 // DEPRECATED CONSTANTS - Use getter functions instead!
-// These are kept for backwards compatibility but evaluate at load time
-// which may be BEFORE env vars are loaded. Use getCoreTokens(), getHlApiUrl(), getNetwork() instead.
+// These are kept ONLY for backwards compatibility during migration.
+// All new code should use getCoreTokens(), getHlApiUrl(), getNetwork() instead.
 // ===========================================
 
-// @deprecated Use getCoreTokens() for runtime network detection
-export const CORE_TOKENS = TESTNET_TOKENS // Will be wrong on mainnet if env not loaded
+/**
+ * @deprecated Use getCoreTokens() for proper runtime network detection.
+ * This constant evaluates at module load time which may be BEFORE env vars are loaded.
+ */
+export const CORE_TOKENS = getCoreTokens()
 
-// @deprecated Use getHlApiUrl() for runtime network detection  
-export const HL_API_URL = 'https://api.hyperliquid-testnet.xyz'
+/**
+ * @deprecated Use getHlApiUrl() for proper runtime network detection.
+ */
+export const HL_API_URL = getHlApiUrl()
 
-// @deprecated Use getNetwork() for runtime network detection
-export const NETWORK = 'testnet'
+/**
+ * @deprecated Use getNetwork() for proper runtime network detection.
+ */
+export const NETWORK = getNetwork()
 
 // ===========================================
 // HELPER FUNCTIONS - All use runtime detection
@@ -205,12 +212,13 @@ export function getTradableTokens(): UnifiedToken[] {
 
 export function getDefaultToken(): UnifiedToken {
   // Default to BTC (UBTC) as the primary watch token
-  return CORE_TOKENS.find(t => t.symbol === 'UBTC') || CORE_TOKENS.find(t => t.symbol !== 'USDC') || CORE_TOKENS[0]
+  const tokens = getCoreTokens()
+  return tokens.find(t => t.symbol === 'UBTC') || tokens.find(t => t.symbol !== 'USDC') || tokens[0]
 }
 
 // Update token prices in-place
 export function updateTokenPrices(prices: Record<string, number>): void {
-  CORE_TOKENS.forEach(token => {
+  getCoreTokens().forEach(token => {
     if (prices[token.symbol] !== undefined) {
       token.price = prices[token.symbol]
     }
@@ -311,7 +319,7 @@ export function getMarketNameCache(): Record<string, string> {
 
 export function getSpotIndexMap(): Record<string, number> {
   const map: Record<string, number> = {}
-  CORE_TOKENS.forEach(token => {
+  getCoreTokens().forEach(token => {
     if (token.spotIndex !== undefined) {
       map[token.symbol] = token.spotIndex
     }
@@ -320,7 +328,7 @@ export function getSpotIndexMap(): Record<string, number> {
 }
 
 export function getSymbolByIndex(index: number): string | undefined {
-  const token = CORE_TOKENS.find(token => token.spotIndex === index)
+  const token = getCoreTokens().find(token => token.spotIndex === index)
   return token?.symbol
 }
 
@@ -338,7 +346,7 @@ export function getTokenSymbol(assetIndex: number): string {
 }
 
 export function getSupportedSpotTokens(): string[] {
-  return CORE_TOKENS
+  return getCoreTokens()
     .filter(token => token.spotIndex !== undefined)
     .map(token => token.symbol)
 }

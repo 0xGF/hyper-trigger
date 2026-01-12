@@ -45,7 +45,7 @@ interface TokenModalProps {
   onClose: () => void
   onSelect: (symbol: string) => void
   tokens: UnifiedToken[]
-  prices?: Record<string, number>
+  balances?: Record<string, string>
   title: string
   excludeToken?: string
 }
@@ -55,12 +55,13 @@ export function TokenModal({
   onClose, 
   onSelect, 
   tokens, 
-  prices = {},
+  balances = {},
   title, 
   excludeToken 
 }: TokenModalProps) {
   const [search, setSearch] = useState('')
   
+  // Sort tokens - ones with balance first, then alphabetically
   const filteredTokens = useMemo(() => {
     return tokens
       .filter(t => t.symbol !== excludeToken)
@@ -69,7 +70,14 @@ export function TokenModal({
         t.symbol.toLowerCase().includes(search.toLowerCase()) ||
         t.displayName.toLowerCase().includes(search.toLowerCase())
       )
-  }, [tokens, search, excludeToken])
+      .sort((a, b) => {
+        const balA = parseFloat(balances[a.symbol] || '0')
+        const balB = parseFloat(balances[b.symbol] || '0')
+        if (balA > 0 && balB <= 0) return -1
+        if (balB > 0 && balA <= 0) return 1
+        return 0
+      })
+  }, [tokens, search, excludeToken, balances])
 
   const handleSelect = (symbol: string) => {
     onSelect(symbol)
@@ -122,28 +130,36 @@ export function TokenModal({
           
           {/* Token List */}
           <div className="overflow-y-auto max-h-[320px] p-1.5">
-            {filteredTokens.map(token => (
-              <button
-                key={token.symbol}
-                type="button"
-                onClick={() => handleSelect(token.symbol)}
-                className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-muted rounded-lg transition-colors"
-              >
-                <TokenIcon symbol={token.symbol} size="md" />
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium text-foreground">{token.symbol}</div>
-                  <div className="text-xs text-muted-foreground">{token.displayName}</div>
-                </div>
-                {prices[token.symbol] !== undefined && (
-                  <div className="text-sm text-muted-foreground">
-                    ${prices[token.symbol].toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
-                    })}
+            {filteredTokens.map(token => {
+              const balance = balances[token.symbol]
+              const hasBalance = balance && parseFloat(balance) > 0
+              
+              return (
+                <button
+                  key={token.symbol}
+                  type="button"
+                  onClick={() => handleSelect(token.symbol)}
+                  className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-muted rounded-lg transition-colors"
+                >
+                  <TokenIcon symbol={token.symbol} size="md" />
+                  <div className="flex-1 text-left">
+                    <div className="text-sm font-medium text-foreground">{token.symbol}</div>
+                    <div className="text-xs text-muted-foreground">{token.displayName}</div>
                   </div>
-                )}
-              </button>
-            ))}
+                  {hasBalance && (
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-foreground tabular-nums">
+                        {parseFloat(balance).toLocaleString(undefined, { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: 4 
+                        })}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">Balance</div>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </motion.div>
       </motion.div>

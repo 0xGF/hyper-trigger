@@ -107,10 +107,13 @@ export interface TriggerContractInterface extends Interface {
       | "nextTriggerId"
       | "pause"
       | "paused"
+      | "recalculateActiveTriggerCount"
       | "renounceRole"
+      | "requireOracleVerification"
       | "revokeRole"
       | "setAssetIndex"
       | "setAssetIndexes"
+      | "setRequireOracleVerification"
       | "supportsInterface"
       | "triggerFee"
       | "triggers"
@@ -127,6 +130,7 @@ export interface TriggerContractInterface extends Interface {
     nameOrSignatureOrTopic:
       | "AssetIndexSet"
       | "FeeUpdated"
+      | "OracleVerificationUpdated"
       | "Paused"
       | "PriceDeviationUpdated"
       | "RoleAdminChanged"
@@ -240,8 +244,16 @@ export interface TriggerContractInterface extends Interface {
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "paused", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "recalculateActiveTriggerCount",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "requireOracleVerification",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
@@ -254,6 +266,10 @@ export interface TriggerContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "setAssetIndexes",
     values: [string[], BigNumberish[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setRequireOracleVerification",
+    values: [boolean]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
@@ -372,7 +388,15 @@ export interface TriggerContractInterface extends Interface {
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "recalculateActiveTriggerCount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "renounceRole",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "requireOracleVerification",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
@@ -382,6 +406,10 @@ export interface TriggerContractInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "setAssetIndexes",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setRequireOracleVerification",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -435,6 +463,18 @@ export namespace FeeUpdatedEvent {
   export type OutputTuple = [newFee: bigint];
   export interface OutputObject {
     newFee: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace OracleVerificationUpdatedEvent {
+  export type InputTuple = [required: boolean];
+  export type OutputTuple = [required: boolean];
+  export interface OutputObject {
+    required: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -784,11 +824,19 @@ export interface TriggerContract extends BaseContract {
 
   paused: TypedContractMethod<[], [boolean], "view">;
 
+  recalculateActiveTriggerCount: TypedContractMethod<
+    [startId: BigNumberish, endId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   renounceRole: TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
     "nonpayable"
   >;
+
+  requireOracleVerification: TypedContractMethod<[], [boolean], "view">;
 
   revokeRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -804,6 +852,12 @@ export interface TriggerContract extends BaseContract {
 
   setAssetIndexes: TypedContractMethod<
     [assets: string[], spotIndexes: BigNumberish[]],
+    [void],
+    "nonpayable"
+  >;
+
+  setRequireOracleVerification: TypedContractMethod<
+    [required: boolean],
     [void],
     "nonpayable"
   >;
@@ -1022,12 +1076,22 @@ export interface TriggerContract extends BaseContract {
     nameOrSignature: "paused"
   ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
+    nameOrSignature: "recalculateActiveTriggerCount"
+  ): TypedContractMethod<
+    [startId: BigNumberish, endId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "renounceRole"
   ): TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "requireOracleVerification"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
     nameOrSignature: "revokeRole"
   ): TypedContractMethod<
@@ -1049,6 +1113,9 @@ export interface TriggerContract extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "setRequireOracleVerification"
+  ): TypedContractMethod<[required: boolean], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
@@ -1151,6 +1218,13 @@ export interface TriggerContract extends BaseContract {
     FeeUpdatedEvent.OutputObject
   >;
   getEvent(
+    key: "OracleVerificationUpdated"
+  ): TypedContractEvent<
+    OracleVerificationUpdatedEvent.InputTuple,
+    OracleVerificationUpdatedEvent.OutputTuple,
+    OracleVerificationUpdatedEvent.OutputObject
+  >;
+  getEvent(
     key: "Paused"
   ): TypedContractEvent<
     PausedEvent.InputTuple,
@@ -1249,6 +1323,17 @@ export interface TriggerContract extends BaseContract {
       FeeUpdatedEvent.InputTuple,
       FeeUpdatedEvent.OutputTuple,
       FeeUpdatedEvent.OutputObject
+    >;
+
+    "OracleVerificationUpdated(bool)": TypedContractEvent<
+      OracleVerificationUpdatedEvent.InputTuple,
+      OracleVerificationUpdatedEvent.OutputTuple,
+      OracleVerificationUpdatedEvent.OutputObject
+    >;
+    OracleVerificationUpdated: TypedContractEvent<
+      OracleVerificationUpdatedEvent.InputTuple,
+      OracleVerificationUpdatedEvent.OutputTuple,
+      OracleVerificationUpdatedEvent.OutputObject
     >;
 
     "Paused(address)": TypedContractEvent<

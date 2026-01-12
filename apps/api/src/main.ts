@@ -7,6 +7,7 @@ import { join } from 'path'
 import helmet from 'helmet'
 import { v4 as uuidv4 } from 'uuid'
 import { Request, Response, NextFunction } from 'express'
+import { json, urlencoded } from 'express'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -16,6 +17,10 @@ async function bootstrap() {
   })
 
   const logger = new Logger('Bootstrap')
+
+  // Security: Request size limits to prevent DoS
+  app.use(json({ limit: '1mb' }))
+  app.use(urlencoded({ extended: true, limit: '1mb' }))
 
   // Security: Helmet middleware
   app.use(helmet({

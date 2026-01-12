@@ -153,4 +153,53 @@
 /* Logo color filter to match primary hsl(172, 47%, 51%) */
 .logo-tint {
   filter: brightness(0) saturate(100%) invert(67%) sepia(37%) saturate(507%) hue-rotate(121deg) brightness(92%) contrast(87%);
+}
+
+/* Logo text mask animation - sweeps in then out on load only */
+@keyframes logo-mask-reveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  30% {
+    clip-path: inset(0 0 0 0);
+  }
+  70% {
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+/* Logo icon slide animation - only moves after text is masked */
+@keyframes logo-icon-slide {
+  0%, 85% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(10px);
+  }
+}
+
+.logo-text-animate {
+  clip-path: inset(0 100% 0 0);
+  animation: logo-mask-reveal 1.2s ease-out forwards;
+}
+
+.logo-icon-animate {
+  transform: translateX(10px);
+  animation: logo-icon-slide 1.2s ease-out forwards;
+}
+
+/* After animation ends, hover just transitions */
+.group:hover .logo-text-animate {
+  animation: none !important;
+  clip-path: inset(0 0 0 0) !important;
+  transition: clip-path 0.25s ease-out;
+}
+
+.group:hover .logo-icon-animate {
+  animation: none !important;
+  transform: translateX(0) !important;
+  transition: transform 0.25s ease-out;
 } 

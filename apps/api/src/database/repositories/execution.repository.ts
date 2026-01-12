@@ -30,19 +30,26 @@ export class ExecutionRepository {
         markedOnchain: false,
         status: { in: [ExecutionStatus.FILLED, ExecutionStatus.PARTIALLY_FILLED] },
       },
-      include: { trigger: true },
     })
   }
 
   async findByStatus(status: ExecutionStatus): Promise<TriggerExecution[]> {
     return this.prisma.triggerExecution.findMany({
       where: { status },
-      include: { trigger: true },
+    })
+  }
+
+  async findByUserAddress(userAddress: string): Promise<TriggerExecution[]> {
+    return this.prisma.triggerExecution.findMany({
+      where: { userAddress: userAddress.toLowerCase() },
+      orderBy: { tradedAt: 'desc' },
     })
   }
 
   async create(data: {
     triggerId: number
+    userAddress: string
+    tradeAsset: string
     executionPrice: number
     executedSize: string
     hlOrderId?: string
@@ -51,6 +58,8 @@ export class ExecutionRepository {
     return this.prisma.triggerExecution.create({
       data: {
         triggerId: data.triggerId,
+        userAddress: data.userAddress.toLowerCase(),
+        tradeAsset: data.tradeAsset,
         executionPrice: new Prisma.Decimal(data.executionPrice),
         executedSize: new Prisma.Decimal(data.executedSize),
         hlOrderId: data.hlOrderId,
@@ -119,4 +128,3 @@ export class ExecutionRepository {
     return { total, filled, confirmed, failed, pending }
   }
 }
-

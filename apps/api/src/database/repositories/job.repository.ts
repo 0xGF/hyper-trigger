@@ -28,7 +28,6 @@ export class JobRepository {
       },
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
       take: limit,
-      include: { trigger: true },
     })
   }
 

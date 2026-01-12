@@ -10,14 +10,34 @@ const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK === 'testnet'
 const HL_API_URL = IS_TESTNET ? 'https://api.hyperliquid-testnet.xyz' : 'https://api.hyperliquid.xyz'
 const EXPECTED_CHAIN_ID = IS_TESTNET ? 998 : 999
 
-// Bridge Helper contract address
-const BRIDGE_HELPER_ADDRESS = process.env.NEXT_PUBLIC_BRIDGE_HELPER_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000'
+// Bridge Helper contract address - validate format
+const BRIDGE_HELPER_ADDRESS = (() => {
+  const addr = process.env.NEXT_PUBLIC_BRIDGE_HELPER_ADDRESS
+  if (!addr) {
+    return '0x0000000000000000000000000000000000000000' as `0x${string}`
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+    console.warn('[useBridge] Invalid NEXT_PUBLIC_BRIDGE_HELPER_ADDRESS format')
+    return '0x0000000000000000000000000000000000000000' as `0x${string}`
+  }
+  return addr as `0x${string}`
+})()
 
 // HyperCore system addresses
 const HYPE_SYSTEM_ADDRESS = '0x2222222222222222222222222222222222222222' as const
 
 // USDC address on HyperEVM (needs to be configured per network)
-const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000'
+const USDC_ADDRESS = (() => {
+  const addr = process.env.NEXT_PUBLIC_USDC_ADDRESS
+  if (!addr) {
+    return '0x0000000000000000000000000000000000000000' as `0x${string}`
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+    console.warn('[useBridge] Invalid NEXT_PUBLIC_USDC_ADDRESS format')
+    return '0x0000000000000000000000000000000000000000' as `0x${string}`
+  }
+  return addr as `0x${string}`
+})()
 const USDC_DECIMALS = 6
 
 // Bridge Helper ABI

@@ -61,59 +61,72 @@ export default function HomePage() {
       }))
   }, [activeTriggers, watchToken])
   
-  // All active triggers for the list
+  // All active triggers for the list - with executing state
   const allTriggers = useMemo(() => {
     if (!activeTriggers) return []
-    return (activeTriggers as Trigger[]).map(t => ({
-      id: Number(t.id),
-      watchAsset: t.watchAsset,
-      targetPrice: Number(formatUnits(t.targetPrice, 6)),
-      isAbove: t.isAbove,
-      tradeAsset: t.tradeAsset,
-      isBuy: t.isBuy,
-      amount: t.isBuy ? formatUnits(t.amount, 6) : formatUnits(t.amount, 18),
-      maxSlippage: Number(t.maxSlippage),
-    }))
-  }, [activeTriggers])
+    return (activeTriggers as Trigger[]).map(t => {
+      const targetPrice = Number(formatUnits(t.targetPrice, 6))
+      const currentPrice = prices[t.watchAsset]?.price || 0
+      
+      // Check if conditions are met (trigger should be executing)
+      const conditionMet = currentPrice > 0 && (
+        t.isAbove ? currentPrice >= targetPrice : currentPrice <= targetPrice
+      )
+      
+      return {
+        id: Number(t.id),
+        watchAsset: t.watchAsset,
+        targetPrice,
+        isAbove: t.isAbove,
+        tradeAsset: t.tradeAsset,
+        isBuy: t.isBuy,
+        amount: t.isBuy ? formatUnits(t.amount, 6) : formatUnits(t.amount, 18),
+        maxSlippage: Number(t.maxSlippage),
+        isExecuting: conditionMet, // NEW: show executing state
+      }
+    })
+  }, [activeTriggers, prices])
   
-  // Calculate what's committed to active triggers (in USD value)
-  const committedToTriggers = useMemo(() => {
-    if (!allTriggers.length) return { usdc: 0, tokens: new Map<string, number>() }
+  // Calculate total committed value in USD (for both buy and sell triggers)
+  const totalCommittedValue = useMemo(() => {
+    if (!allTriggers.length) return 0
     
-    let usdcCommitted = 0
-    const tokenAmounts = new Map<string, number>()
-    
+    let total = 0
     allTriggers.forEach(trigger => {
       if (trigger.isBuy) {
-        // For buys, USDC is committed
-        usdcCommitted += parseFloat(trigger.amount)
+        // For buys, USDC amount is the commitment
+        total += parseFloat(trigger.amount)
       } else {
-        // For sells, the token is committed
-        const currentAmount = tokenAmounts.get(trigger.tradeAsset) || 0
-        tokenAmounts.set(trigger.tradeAsset, currentAmount + parseFloat(trigger.amount))
+        // For sells, calculate current USD value of tokens
+        const tokenPrice = prices[trigger.tradeAsset]?.price || 0
+        total += parseFloat(trigger.amount) * tokenPrice
       }
     })
     
-    return { usdc: usdcCommitted, tokens: tokenAmounts }
-  }, [allTriggers])
-  
-  // Calculate total committed value in USD
-  const totalCommittedValue = useMemo(() => {
-    let total = committedToTriggers.usdc // USDC is 1:1
-    
-    committedToTriggers.tokens.forEach((amount, symbol) => {
-      const tokenPrice = prices[symbol]?.price || 0
-      total += amount * tokenPrice
-    })
-    
     return total
-  }, [committedToTriggers, prices])
+  }, [allTriggers, prices])
   
   // Track previous triggers to detect executions
-  const prevTriggersRef = useRef<Map<number, { tradeAsset: string; isBuy: boolean; amount: string }>>(new Map())
+  const prevTriggersRef = useRef<Map<number, { tradeAsset: string; isBuy: boolean; amount: string; wasExecuting: boolean }>>(new Map())
   const publicClient = usePublicClient()
   
-  // Detect when triggers get executed (removed from active list without user cancelling)
+  // Check if any trigger is currently executing
+  const hasExecutingTrigger = useMemo(() => allTriggers.some(t => t.isExecuting), [allTriggers])
+  
+  // Poll more aggressively when a trigger is executing
+  useEffect(() => {
+    if (!hasExecutingTrigger) return
+    
+    // Poll every 500ms when executing for faster detection
+    const intervalId = window.setInterval(() => {
+      void refetchTriggers()
+      void refetchBalances()
+    }, 500)
+    
+    return () => window.clearInterval(intervalId)
+  }, [hasExecutingTrigger, refetchTriggers, refetchBalances])
+  
+  // Detect when triggers get executed (removed from active list)
   useEffect(() => {
     if (!activeTriggers || !publicClient) return
     
@@ -121,60 +134,26 @@ export default function HomePage() {
     const prevTriggers = prevTriggersRef.current
     
     // Check for triggers that disappeared (not cancelled by user)
-    prevTriggers.forEach(async (trigger, id) => {
+    prevTriggers.forEach((trigger, id) => {
       if (!currentIds.has(id) && cancellingId !== id) {
-        // Trigger disappeared - check on-chain status to confirm execution
-        try {
-          const TRIGGER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS as `0x${string}`
-          const TRIGGER_ABI = [
-            {
-              type: 'function',
-              name: 'getTrigger',
-              inputs: [{ name: 'triggerId', type: 'uint256' }],
-              outputs: [
-                {
-                  type: 'tuple',
-                  components: [
-                    { name: 'status', type: 'uint8' },
-                    { name: 'executedAt', type: 'uint256' },
-                  ],
-                },
-              ],
-              stateMutability: 'view',
-            },
-          ] as const
-          
-          const result = await publicClient.readContract({
-            address: TRIGGER_CONTRACT_ADDRESS,
-            abi: TRIGGER_ABI,
-            functionName: 'getTrigger',
-            args: [BigInt(id)],
-          }) as { status: number; executedAt: bigint }
-          
-          // Only show success if status is Executed (1)
-          if (result.status === TriggerStatus.Executed && result.executedAt > BigInt(0)) {
-            const action = trigger.isBuy ? 'Bought' : 'Sold'
-            const amount = parseFloat(trigger.amount).toFixed(4)
-            toast.success(
-              `Trigger executed: ${action} ${amount} ${getDisplayName(trigger.tradeAsset)}`,
-              { duration: 5000 }
-            )
-            refetchBalances()
-          } else {
-            // Trigger was cancelled/expired/failed - no notification needed
-            refetchBalances()
-          }
-        } catch (error) {
-          // Failed to check status - just refetch balance silently
-          refetchBalances()
+        // Trigger disappeared - if it was executing, it was likely executed successfully
+        if (trigger.wasExecuting) {
+          const action = trigger.isBuy ? 'Bought' : 'Sold'
+          const amount = parseFloat(trigger.amount).toFixed(4)
+          toast.success(
+            `Trigger executed: ${action} ${amount} ${getDisplayName(trigger.tradeAsset)}`,
+            { duration: 5000 }
+          )
         }
+        // Always refetch balances when a trigger is removed
+        refetchBalances()
       }
     })
     
     // Update previous triggers map
-    const newMap = new Map<number, { tradeAsset: string; isBuy: boolean; amount: string }>()
+    const newMap = new Map<number, { tradeAsset: string; isBuy: boolean; amount: string; wasExecuting: boolean }>()
     allTriggers.forEach(t => {
-      newMap.set(t.id, { tradeAsset: t.tradeAsset, isBuy: t.isBuy, amount: t.amount })
+      newMap.set(t.id, { tradeAsset: t.tradeAsset, isBuy: t.isBuy, amount: t.amount, wasExecuting: t.isExecuting })
     })
     prevTriggersRef.current = newMap
   }, [allTriggers, cancellingId, refetchBalances, publicClient])
@@ -222,14 +201,14 @@ export default function HomePage() {
     }
   }, [allTriggers, prices, updateTriggerPrice, refetchTriggers, refetchBalances])
   
-  // Convert prices to simple Record<string, number> for TokenModal
-  const pricesMap = useMemo(() => {
-    const p: Record<string, number> = {}
-    Object.entries(prices).forEach(([symbol, data]) => {
-      p[symbol] = data.price
+  // Convert spot balances to Record<string, string> for TokenModal
+  const balancesMap = useMemo(() => {
+    const b: Record<string, string> = {}
+    spotBalances.forEach(bal => {
+      b[bal.symbol] = bal.total
     })
-    return p
-  }, [prices])
+    return b
+  }, [spotBalances])
   
   const formatPrice = (price: number) => {
     if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -326,7 +305,7 @@ export default function HomePage() {
           onClose={() => setShowTokenModal(false)}
           onSelect={setWatchToken}
           tokens={tokens}
-          prices={pricesMap}
+          balances={balancesMap}
           title="Select Token"
         />
         
@@ -366,7 +345,7 @@ export default function HomePage() {
                 <th className="text-left px-4 py-2.5 font-medium">When</th>
                 <th className="text-left px-4 py-2.5 font-medium">Trade</th>
                 <th className="text-left px-4 py-2.5 font-medium">Side</th>
-                <th className="text-left px-4 py-2.5 font-medium">Size</th>
+                <th className="text-left px-4 py-2.5 font-medium">Amount</th>
                 <th className="text-right px-4 py-2.5 font-medium"></th>
               </tr>
             </thead>
@@ -429,22 +408,32 @@ export default function HomePage() {
                     
                     {/* Size */}
                     <td className="px-4 py-2.5 text-foreground tabular-nums">
-                      {parseFloat(trigger.amount).toFixed(4)}
+                      {trigger.isBuy 
+                        ? `$${parseFloat(trigger.amount).toFixed(2)}`
+                        : `${parseFloat(trigger.amount).toFixed(4)} ${getDisplayName(trigger.tradeAsset)}`
+                      }
                     </td>
                     
-                    {/* Cancel */}
+                    {/* Status/Cancel */}
                     <td className="px-4 py-2.5 text-right">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleCancelTrigger(trigger.id) }}
-                        disabled={cancellingId !== null}
-                        className="w-14 text-destructive hover:text-destructive/80 text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center ml-auto"
-                      >
-                        {cancellingId === trigger.id ? (
+                      {trigger.isExecuting ? (
+                        <div className="w-20 flex items-center justify-end gap-1.5 text-primary text-xs font-medium">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          'Cancel'
-                        )}
-                      </button>
+                          <span>Executing</span>
+                        </div>
+                      ) : cancellingId === trigger.id ? (
+                        <div className="w-20 flex items-center justify-end">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCancelTrigger(trigger.id) }}
+                          disabled={cancellingId !== null}
+                          className="w-20 text-destructive hover:text-destructive/80 text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-end"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -486,98 +475,69 @@ export default function HomePage() {
                 refetchTriggers()
                 refetchBalances()
               }}
+              spotBalances={spotBalances}
+              isLoadingBalances={isLoadingBalances}
             />
           </div>
         </div>
         
-        {/* Account Equity Card */}
-        <div className="flex-1 bg-card border border-border rounded-xl p-3 space-y-2 overflow-y-auto">
-          <div className="text-xs font-medium text-foreground">Account Equity</div>
-          
-          <div className="space-y-1">
+        {/* Account Overview Card */}
+        <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
+          {/* Balances Section */}
+          <div className="space-y-1.5 pb-2 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Spot Balance</span>
-              <span className="text-xs font-medium text-foreground">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Spot</span>
+              <span className="text-xs font-medium text-foreground tabular-nums">
                 {isLoadingBalances ? '—' : `$${totalSpotValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </span>
             </div>
-            {allTriggers.length > 0 && (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">In Triggers</span>
-                  <span className="text-xs text-muted-foreground">
-                    −${totalCommittedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-border/30">
-                  <span className="text-xs text-muted-foreground">Available</span>
-                  <span className="text-xs font-medium text-foreground">
-                    ${Math.max(0, totalSpotValue - totalCommittedValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground line-through opacity-50">Perps</span>
-              <span className="text-xs text-muted-foreground/50">$0.00</span>
+            <div className="flex items-center justify-between opacity-40">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Perps</span>
+              <span className="text-xs text-muted-foreground tabular-nums">$0.00</span>
             </div>
           </div>
           
-          {/* Committed Breakdown */}
-          {allTriggers.length > 0 && (
-            <div className="pt-1.5 border-t border-border/30">
-              <div className="text-[10px] text-muted-foreground/70 mb-1">Trigger Allocations</div>
-              <div className="space-y-0.5">
-                {committedToTriggers.usdc > 0 && (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <TokenIcon symbol="USDC" size="xs" />
-                      <span className="text-[10px] text-muted-foreground/70">USDC</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/70 tabular-nums">
-                      {committedToTriggers.usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
-                {Array.from(committedToTriggers.tokens.entries()).map(([symbol, amount]) => (
-                  <div key={symbol} className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <TokenIcon symbol={symbol} size="xs" />
-                      <span className="text-[10px] text-muted-foreground/70">{getDisplayName(symbol)}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/70 tabular-nums">
-                      {amount.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Triggers Section */}
+          <div className="space-y-1.5 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Spot Triggers</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {allTriggers.length > 0 ? `$${totalCommittedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+              </span>
             </div>
-          )}
-          
-          <div className="pt-2 border-t border-border/50">
-            <div className="text-sm font-medium text-muted-foreground/50 mb-2">Perps Overview</div>
-            <div className="space-y-1.5 text-muted-foreground/40">
-              <div className="flex items-center justify-between">
-                <span className="text-xs line-through">Balance</span>
-                <span className="text-xs">$0.00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Unrealized PNL</span>
-                <span className="text-xs">$0.00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs line-through">Cross Margin Ratio</span>
-                <span className="text-xs text-primary/40">0.00%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs line-through">Maintenance Margin</span>
-                <span className="text-xs">$0.00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs line-through">Cross Account Leverage</span>
-                <span className="text-xs">0.00x</span>
-              </div>
+            <div className="flex items-center justify-between opacity-40">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Perp Triggers</span>
+              <span className="text-xs text-muted-foreground tabular-nums">—</span>
             </div>
+          </div>
+        </div>
+        
+        {/* Portfolio Card */}
+        <div className="h-[210px] bg-card border border-border rounded-xl p-2.5 flex flex-col shrink-0">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Portfolio</div>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {spotBalances.length === 0 || spotBalances.filter(bal => parseFloat(bal.total) > 0).length === 0 ? (
+              <div className="text-[10px] text-muted-foreground/60 py-2">No assets</div>
+            ) : (
+              spotBalances
+                .filter(bal => parseFloat(bal.total) > 0)
+                .map(bal => {
+                  const tokenPrice = prices[bal.symbol]?.price || (bal.symbol === 'USDC' ? 1 : 0)
+                  const usdValue = parseFloat(bal.total) * tokenPrice
+                  return (
+                    <div key={bal.symbol} className="flex items-center gap-2 py-0.5">
+                      <TokenIcon symbol={bal.symbol} size="xs" />
+                      <span className="text-[10px] font-medium text-foreground flex-1">{bal.symbol}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {parseFloat(bal.total).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60 tabular-nums w-14 text-right">
+                        ${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )
+                })
+            )}
           </div>
         </div>
       </div>

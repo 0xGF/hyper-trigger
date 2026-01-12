@@ -8,7 +8,6 @@ import { TokenIcon } from '@/components/ui/token-icon'
 import { TokenModal } from '@/components/ui/token-select'
 import { useTriggerContract } from '@/hooks/useTriggerContract'
 import { useAgentAuth } from '@/hooks/useAgentAuth'
-import { useBridge } from '@/hooks/useBridge'
 import { usePriceContext } from '@/contexts/PriceContext'
 import { toast } from 'sonner'
 import { formatErrorMessage, isUserRejection } from '@/lib/errors'
@@ -18,10 +17,18 @@ import {
   sortTokensByImportance,
 } from '@/lib/tokens'
 
+interface SpotBalance {
+  symbol: string
+  total: string
+  available: string
+}
+
 interface TriggerBuilderProps {
   watchToken?: string
   onWatchTokenChange?: (token: string) => void
   onTriggerCreated?: () => void
+  spotBalances?: SpotBalance[]
+  isLoadingBalances?: boolean
 }
 
 interface TriggerState {
@@ -33,19 +40,25 @@ interface TriggerState {
   slippage: string
 }
 
-export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenChange, onTriggerCreated }: TriggerBuilderProps) {
+export function TriggerBuilder({ 
+  watchToken: externalWatchToken, 
+  onWatchTokenChange, 
+  onTriggerCreated,
+  spotBalances = [],
+  isLoadingBalances = false,
+}: TriggerBuilderProps) {
   const { isConnected } = useAccount()
   const { createTrigger, isWritePending, isConfirming, error } = useTriggerContract()
   const { 
-    isAuthorized, 
+    isAuthorized,
+    isFullyEnabled,
     isPending: isAuthPending, 
-    authorizeAgent, 
+    enableTrading,
     isWalletReady,
     hasExistingAgent,
     existingAgents,
     revokeAgentByAddress 
   } = useAgentAuth()
-  const { spotBalances, isLoadingBalances } = useBridge()
   
   // Use centralized price context - single source of truth
   const { prices: priceData, getPrice } = usePriceContext()
@@ -58,6 +71,15 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
     })
     return p
   }, [priceData])
+  
+  // Convert spot balances to Record<string, string> for TokenModal
+  const balancesMap = useMemo(() => {
+    const b: Record<string, string> = {}
+    spotBalances.forEach(bal => {
+      b[bal.symbol] = bal.total
+    })
+    return b
+  }, [spotBalances])
   
   const triggerableTokens = useMemo(() => sortTokensByImportance(getTriggerableTokens()), [])
   const tradableTokens = useMemo(() => sortTokensByImportance(getTradableTokens()), [])
@@ -119,7 +141,7 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
     return (output * slipMult).toFixed(4)
   }, [state.sellAmount, state.sellToken, state.buyToken, state.slippage, prices])
   
-  const MIN_ORDER_VALUE = 10 // Hyperliquid minimum order value in USD
+  const MIN_ORDER_VALUE = 12 // Hyperliquid minimum + buffer for rounding
   
   const usdValue = useMemo(() => {
     const amount = parseFloat(state.sellAmount) || 0
@@ -137,14 +159,15 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
     if (hasExistingAgent && existingAgents.length > 0) {
       const success = await revokeAgentByAddress(existingAgents[0])
       if (success) {
-        // After revoking, try to authorize our agent
-        await authorizeAgent()
+        // After revoking, enable trading (authorize agent + approve builder fee)
+        await enableTrading()
       }
       return
     }
     
-    if (!isAuthorized) {
-      await authorizeAgent()
+    // If not fully enabled (agent + builder), do the combined enableTrading flow
+    if (!isFullyEnabled) {
+      await enableTrading()
       return
     }
     try {
@@ -179,7 +202,7 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
   const isValid = state.sellAmount && state.targetPrice && parseFloat(state.sellAmount) > 0 && parseFloat(state.targetPrice) > 0 && !isBelowMinimum
   
   // Button should be enabled for authorization even without form being valid
-  const isButtonDisabled = isLoading || (isAuthorized && !isValid)
+  const isButtonDisabled = isLoading || (isFullyEnabled && !isValid)
 
   const swapTokens = () => {
     setState(s => ({
@@ -336,7 +359,7 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
               />
               <div className={`text-xs ${isBelowMinimum ? 'text-destructive' : 'text-muted-foreground'}`}>
                 ${usdValue}
-                {isBelowMinimum && <span className="ml-1">(min $10)</span>}
+                {isBelowMinimum && <span className="ml-1">(min $12)</span>}
               </div>
             </div>
           </div>
@@ -388,9 +411,9 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
         </div>
         
         {/* Show existing agent warning */}
-        {hasExistingAgent && !isAuthorized && (
+        {hasExistingAgent && !isFullyEnabled && (
           <div className="p-2 bg-amber-500/10 border text-center border-amber-500/20 rounded-lg text-xs text-amber-500">
-            ⚠️ Another agent authorized. Click below to revoke and authorize HyperTrigger.
+            ⚠️ Another agent authorized. Click below to revoke and enable trading.
           </div>
         )}
       </div>
@@ -411,15 +434,15 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={isButtonDisabled || (!isAuthorized && !isWalletReady && !hasExistingAgent)}
+            disabled={isButtonDisabled || (!isFullyEnabled && !isWalletReady && !hasExistingAgent)}
             className="w-full border border-muted border-0.5 h-12 bg-primary hover:bg-primary/90 disabled:bg-secondary disabled:text-muted-foreground text-primary-foreground font-bold rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
-            ) : hasExistingAgent && !isAuthorized ? (
-              'REVOKE OLD & AUTHORIZE'
-            ) : !isAuthorized ? (
-              !isWalletReady ? <Loader2 className="w-5 h-5 animate-spin" /> : 'AUTHORIZE AGENT'
+            ) : hasExistingAgent && !isFullyEnabled ? (
+              'REVOKE OLD & ENABLE TRADING'
+            ) : !isFullyEnabled ? (
+              !isWalletReady ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ENABLE TRADING'
             ) : (
               'CREATE TRIGGER'
             )}
@@ -433,7 +456,7 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
         onClose={() => setActiveModal(null)}
         onSelect={handleWatchTokenSelect}
         tokens={triggerableTokens}
-        prices={prices}
+        balances={balancesMap}
         title="Select Watch Token"
         excludeToken="USDC"
       />
@@ -443,7 +466,7 @@ export function TriggerBuilder({ watchToken: externalWatchToken, onWatchTokenCha
         onClose={() => setActiveModal(null)}
         onSelect={handleTokenSelect}
         tokens={tradableTokens}
-        prices={prices}
+        balances={balancesMap}
         title="Select Token"
       />
     </div>

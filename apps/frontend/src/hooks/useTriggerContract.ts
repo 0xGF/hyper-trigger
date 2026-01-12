@@ -8,7 +8,19 @@ const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK === 'testnet'
 const EXPECTED_CHAIN_ID = IS_TESTNET ? 998 : 999
 
 // Contract address - matches deployed TriggerContract
-const TRIGGER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS as `0x${string}` || '0x9029f0676F1Df986DC4bB3aca37158186ad8e570'
+// Validate at module load to catch configuration errors early
+const TRIGGER_CONTRACT_ADDRESS = (() => {
+  const addr = process.env.NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS
+  if (!addr) {
+    console.warn('[useTriggerContract] NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS not set, using default')
+    return '0x9029f0676F1Df986DC4bB3aca37158186ad8e570' as `0x${string}`
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+    console.error('[useTriggerContract] Invalid NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS format')
+    throw new Error('Invalid trigger contract address format')
+  }
+  return addr as `0x${string}`
+})()
 
 // ABI matching TriggerContract.sol
 const TRIGGER_ABI = [
@@ -67,6 +79,7 @@ const TRIGGER_ABI = [
           { name: 'createdAt', type: 'uint256' },
           { name: 'expiresAt', type: 'uint256' },
           { name: 'status', type: 'uint8' },
+          { name: 'feePaid', type: 'uint256' },
           { name: 'executedAt', type: 'uint256' },
           { name: 'executionPrice', type: 'uint256' },
           { name: 'executionTxHash', type: 'bytes32' },
@@ -103,6 +116,7 @@ const TRIGGER_ABI = [
           { name: 'createdAt', type: 'uint256' },
           { name: 'expiresAt', type: 'uint256' },
           { name: 'status', type: 'uint8' },
+          { name: 'feePaid', type: 'uint256' },
           { name: 'executedAt', type: 'uint256' },
           { name: 'executionPrice', type: 'uint256' },
           { name: 'executionTxHash', type: 'bytes32' },
@@ -163,6 +177,7 @@ export interface Trigger {
   createdAt: bigint
   expiresAt: bigint
   status: number
+  feePaid: bigint
   executedAt: bigint
   executionPrice: bigint
   executionTxHash: string
@@ -380,8 +395,11 @@ export function useUserActiveTriggers() {
     chainId: EXPECTED_CHAIN_ID,
     query: {
       enabled: !!address,
-      refetchInterval: 5000, // Refresh every 5 seconds to detect executions quickly
-      staleTime: 2000, // Consider data stale after 2 seconds
+      refetchInterval: 2000, // Refresh every 2 seconds to detect executions quickly
+      staleTime: 500, // Consider data stale after 0.5 seconds
+      gcTime: 1000, // Garbage collect after 1 second
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: 'always',
     },
   })
 }

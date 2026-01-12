@@ -14,7 +14,8 @@ datasource db {
 // TRIGGER TRACKING
 // ============================================
 
-// Synced trigger data from on-chain (cached for performance)
+// Optional: Synced trigger data from on-chain (for caching/analytics)
+// Not required for execution tracking - executions reference on-chain IDs directly
 model Trigger {
   id              Int      @id
   userAddress     String   @map("user_address")
@@ -31,10 +32,6 @@ model Trigger {
   createdAt       DateTime @map("created_at") @db.Timestamptz
   expiresAt       DateTime @map("expires_at") @db.Timestamptz
   syncedAt        DateTime @default(now()) @map("synced_at") @db.Timestamptz
-  
-  // Relations
-  executions      TriggerExecution[]
-  jobs            TriggerJob[]
 
   @@index([userAddress])
   @@index([status])
@@ -56,10 +53,12 @@ enum TriggerStatus {
 // ============================================
 
 // Record of trade executions on Hyperliquid
+// Note: triggerId references on-chain trigger ID, not a database record
 model TriggerExecution {
   id              String   @id @default(cuid())
-  triggerId       Int      @map("trigger_id")
-  trigger         Trigger  @relation(fields: [triggerId], references: [id])
+  triggerId       Int      @map("trigger_id")  // On-chain trigger ID (no FK constraint)
+  userAddress     String   @map("user_address")
+  tradeAsset      String   @map("trade_asset")
   
   // Execution details
   executionPrice  Decimal  @map("execution_price") @db.Decimal(30, 6)
@@ -80,6 +79,7 @@ model TriggerExecution {
   confirmedAt     DateTime? @map("confirmed_at") @db.Timestamptz
   
   @@index([triggerId])
+  @@index([userAddress])
   @@index([status])
   @@index([markedOnchain])
   @@map("trigger_executions")
@@ -100,8 +100,7 @@ enum ExecutionStatus {
 // Track jobs for monitoring and debugging
 model TriggerJob {
   id              String   @id @default(cuid())
-  triggerId       Int      @map("trigger_id")
-  trigger         Trigger  @relation(fields: [triggerId], references: [id])
+  triggerId       Int      @map("trigger_id")  // On-chain trigger ID (no FK constraint)
   
   // Job details
   jobType         JobType  @map("job_type")

@@ -1,6 +1,11 @@
 // HyperTrigger Worker Service
 // Executes SPOT trades on HyperCore via Hyperliquid API when trigger conditions are met
 
+// Fix BigInt serialization globally for JSON.stringify
+// This prevents "Do not know how to serialize a BigInt" errors
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function() { return this.toString() }
+
 import { defineChain, formatUnits, parseUnits } from 'viem'
 import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -89,6 +94,7 @@ const TRIGGER_ABI = [
           { name: 'createdAt', type: 'uint256' },
           { name: 'expiresAt', type: 'uint256' },
           { name: 'status', type: 'uint8' },
+          { name: 'feePaid', type: 'uint256' },
           { name: 'executedAt', type: 'uint256' },
           { name: 'executionPrice', type: 'uint256' },
           { name: 'executionTxHash', type: 'bytes32' },
@@ -195,15 +201,73 @@ export const WORKER_VERSION = '2.0.0'
 const API_URL = process.env.API_URL || 'http://localhost:4000'
 const WORKER_API_KEY = process.env.WORKER_API_KEY || ''
 
+// Timeout configuration (increased for reliability)
+const API_TIMEOUT = parseInt(process.env.API_TIMEOUT || '30000', 10) // 30 seconds default
+
+// Builder fee configuration (0.04% = 4 basis points)
+// Builder codes allow the protocol to earn fees through Hyperliquid's native system
+// Users must approve this builder address and fee rate before trading
+const BUILDER_FEE_BPS = 4 // 0.04%
+const BUILDER_ADDRESS = process.env.BUILDER_ADDRESS as `0x${string}` | undefined
+
+// Circuit breaker configuration
+const CIRCUIT_BREAKER_THRESHOLD = 5 // Number of consecutive failures before opening
+const CIRCUIT_BREAKER_RESET_TIME = 60000 // 1 minute before attempting to close circuit
+
 // Create axios instance with auth header
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api/v1`,
   headers: {
     'x-api-key': WORKER_API_KEY,
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: API_TIMEOUT,
 })
+
+// Circuit breaker state
+interface CircuitBreaker {
+  failures: number
+  lastFailure: number
+  isOpen: boolean
+}
+
+const circuitBreakers: Record<string, CircuitBreaker> = {
+  hyperliquid: { failures: 0, lastFailure: 0, isOpen: false },
+  contract: { failures: 0, lastFailure: 0, isOpen: false },
+  api: { failures: 0, lastFailure: 0, isOpen: false },
+}
+
+function recordFailure(service: keyof typeof circuitBreakers): void {
+  const breaker = circuitBreakers[service]
+  breaker.failures++
+  breaker.lastFailure = Date.now()
+  
+  if (breaker.failures >= CIRCUIT_BREAKER_THRESHOLD) {
+    breaker.isOpen = true
+    logger.warn(`Circuit breaker OPEN for ${service} after ${breaker.failures} failures`)
+  }
+}
+
+function recordSuccess(service: keyof typeof circuitBreakers): void {
+  const breaker = circuitBreakers[service]
+  breaker.failures = 0
+  if (breaker.isOpen) {
+    breaker.isOpen = false
+    logger.info(`Circuit breaker CLOSED for ${service}`)
+  }
+}
+
+function isCircuitOpen(service: keyof typeof circuitBreakers): boolean {
+  const breaker = circuitBreakers[service]
+  
+  // Check if we should try to reset
+  if (breaker.isOpen && Date.now() - breaker.lastFailure > CIRCUIT_BREAKER_RESET_TIME) {
+    logger.info(`Circuit breaker attempting reset for ${service}`)
+    return false // Allow one attempt
+  }
+  
+  return breaker.isOpen
+}
 
 class TriggerWorker {
   private publicClient: PublicClient
@@ -279,11 +343,20 @@ class TriggerWorker {
 
   constructor() {
     const privateKey = process.env.PRIVATE_KEY
-    if (!privateKey || privateKey === 'your_private_key_here') {
-      throw new Error('PRIVATE_KEY environment variable not set')
+    if (!privateKey) {
+      throw new Error('PRIVATE_KEY environment variable is required')
+    }
+    if (privateKey === 'your_private_key_here' || privateKey.length < 64) {
+      throw new Error('PRIVATE_KEY appears to be a placeholder or invalid. Please set a valid private key.')
+    }
+    
+    // Validate private key format
+    const cleanKey = privateKey.replace('0x', '')
+    if (!/^[a-fA-F0-9]{64}$/.test(cleanKey)) {
+      throw new Error('PRIVATE_KEY must be a valid 64-character hex string')
     }
 
-    this.account = privateKeyToAccount(`0x${privateKey.replace('0x', '')}` as `0x${string}`)
+    this.account = privateKeyToAccount(`0x${cleanKey}` as `0x${string}`)
 
     this.publicClient = createPublicClient({
       chain: hyperEVMChain,
@@ -321,6 +394,13 @@ class TriggerWorker {
    * Uses marketName from token config to look up price in allMids
    */
   async getPrice(asset: string): Promise<number | null> {
+    // Check circuit breaker
+    if (isCircuitOpen('hyperliquid')) {
+      logger.warn(`Circuit breaker open for Hyperliquid - using cached price for ${asset}`)
+      const cached = this.priceCache.get(asset)
+      return cached?.price || null
+    }
+    
     // Check cache
     const cached = this.priceCache.get(asset)
     if (cached && Date.now() - cached.timestamp < this.PRICE_CACHE_TTL) {
@@ -343,6 +423,7 @@ class TriggerWorker {
       if (midPrice) {
         const priceNum = parseFloat(midPrice)
         this.priceCache.set(asset, { price: priceNum, timestamp: Date.now() })
+        recordSuccess('hyperliquid')
         logger.debug(`Spot price for ${asset}: $${priceNum.toFixed(2)} (market ${marketName})`)
         return priceNum
       }
@@ -350,6 +431,7 @@ class TriggerWorker {
       logger.warn(`No mid price found for ${asset} at market ${marketName}`)
       return null
     } catch (error) {
+      recordFailure('hyperliquid')
       logger.warn(`Failed to fetch spot price for ${asset}`, { error })
       return null
     }
@@ -492,6 +574,11 @@ class TriggerWorker {
     txHash: string
     error?: string
   }> {
+    // Check circuit breaker
+    if (isCircuitOpen('hyperliquid')) {
+      return { success: false, executionPrice: 0, txHash: '', error: 'Circuit breaker open - Hyperliquid unavailable' }
+    }
+    
     if (!this.exchangeClient) {
       return { success: false, executionPrice: 0, txHash: '', error: 'Exchange client not initialized' }
     }
@@ -554,7 +641,10 @@ class TriggerWorker {
       // For buys: amount is USDC (6 decimals)
       // For sells: amount is token amount (18 decimals typically)
       const amountDecimals = trigger.isBuy ? 6 : 18
-      const amountValue = Number(formatUnits(trigger.amount, amountDecimals))
+      const rawAmountValue = Number(formatUnits(trigger.amount, amountDecimals))
+      
+      // Use full amount - builder fee is handled by Hyperliquid's native builder system
+      const amountValue = rawAmountValue
       
       logger.info(`Trigger calculation`, {
         watchAsset: trigger.watchAsset,
@@ -564,6 +654,7 @@ class TriggerWorker {
         rawAmount: trigger.amount.toString(),
         decimals: amountDecimals,
         amountValue,
+        builderFee: BUILDER_ADDRESS ? `${BUILDER_FEE_BPS/100}%` : 'none',
         isBuy: trigger.isBuy,
       })
       
@@ -572,9 +663,10 @@ class TriggerWorker {
       // For sell orders: amount is already the asset quantity
       let assetSize: number
       if (trigger.isBuy) {
-        // Convert USDC amount to asset quantity: USDC / tradeAssetPrice
+        // Convert USDC amount (after fee) to asset quantity: USDC / tradeAssetPrice
         assetSize = amountValue / tradeAssetPrice
       } else {
+        // For sells, we sell the amount after fee deduction
         assetSize = amountValue
       }
       
@@ -600,14 +692,14 @@ class TriggerWorker {
           const maxAllowedValue = amountValue * 1.05
           
           if (roundedUpValue <= maxAllowedValue) {
-            logger.info(`Adjusted order size to meet $10 minimum: $${orderValue.toFixed(2)} → $${roundedUpValue.toFixed(2)}`)
+            logger.info(`Adjusted order size to meet $12 minimum: $${orderValue.toFixed(2)} → $${roundedUpValue.toFixed(2)}`)
             assetSize = roundedUpSize
             orderValue = roundedUpValue
           } else {
-            return { success: false, executionPrice: 0, txHash: '', error: `Order value too small: $${orderValue.toFixed(2)} (min $10, and rounding up exceeds deposit)` }
+            return { success: false, executionPrice: 0, txHash: '', error: `Order value too small: $${orderValue.toFixed(2)} (min $12, and rounding up exceeds deposit)` }
           }
         } else {
-          return { success: false, executionPrice: 0, txHash: '', error: `Order value too small: $${orderValue.toFixed(2)} (min $10)` }
+          return { success: false, executionPrice: 0, txHash: '', error: `Order value too small: $${orderValue.toFixed(2)} (min $12)` }
         }
       }
       
@@ -639,11 +731,24 @@ class TriggerWorker {
         t: { limit: { tif: 'Ioc' } },           // Immediate-or-Cancel
       }
 
+      // Build order options with optional builder fee
+      // Builder codes allow the protocol to earn fees through Hyperliquid's native system
+      // User must have approved this builder address and fee rate beforehand
+      const orderOptions: { orders: OrderRequest[]; builder?: { b: string; f: number } } = {
+        orders: [orderRequest],
+      }
+      
+      if (BUILDER_ADDRESS) {
+        orderOptions.builder = {
+          b: BUILDER_ADDRESS,  // Builder address to receive fee
+          f: BUILDER_FEE_BPS,  // Fee in basis points (4 = 0.04%)
+        }
+        logger.info(`Including builder fee`, { builder: BUILDER_ADDRESS, feeBps: BUILDER_FEE_BPS })
+      }
+
       // Execute as agent for the user
       // Note: The user must have authorized this worker wallet as an agent on Hyperliquid
-      const result = await this.exchangeClient.order({
-        orders: [orderRequest],
-      })
+      const result = await this.exchangeClient.order(orderOptions)
 
       // Check result - the response structure varies based on success/failure
       if (result.response && 'data' in result.response) {
@@ -651,8 +756,19 @@ class TriggerWorker {
         const statuses = data?.statuses || []
         if (statuses.length > 0) {
           const status = statuses[0] as Record<string, unknown>
-          // Check if order was filled or resting
           if (status && typeof status === 'object') {
+            // CRITICAL: Check for error FIRST before checking success
+            if ('error' in status) {
+              const errorMsg = String(status.error)
+              logger.error('Order rejected by exchange', { error: errorMsg, triggerId: Number(trigger.id) })
+              return {
+                success: false,
+                executionPrice: 0,
+                txHash: '',
+                error: errorMsg,
+              }
+            }
+            // Check if order was filled
             if ('filled' in status) {
               const filled = status.filled as { totalSz: string; avgPx: string; oid: number }
               return {
@@ -662,12 +778,13 @@ class TriggerWorker {
                 txHash: String(filled.oid),
               }
             }
+            // Check if order is resting (limit order placed but not filled)
             if ('resting' in status) {
               const resting = status.resting as { oid: number }
               return {
                 success: true,
                 executionPrice: limitPrice,
-                executedSize: sizeStr, // Use the order size
+                executedSize: sizeStr,
                 txHash: String(resting.oid),
               }
             }
@@ -715,29 +832,62 @@ class TriggerWorker {
   async markTriggerExecuted(
     triggerId: number, 
     executionPrice: number, 
-    txHash: string
-  ): Promise<boolean> {
+    txHash: string,
+    retryCount = 0
+  ): Promise<string | null> {
+    const MAX_RETRIES = 3
+    
     try {
       const priceWei = parseUnits(executionPrice.toString(), 6)
       const txHashBytes = `0x${txHash.padStart(64, '0')}` as `0x${string}`
 
-      const { request } = await this.publicClient.simulateContract({
+      // Get current nonce to avoid conflicts
+      const nonce = await this.publicClient.getTransactionCount({
+        address: this.account.address,
+        blockTag: 'pending',
+      })
+
+      // Use explicit gas limit and nonce to avoid conflicts
+      const hash = await this.walletClient.writeContract({
         address: TRIGGER_CONTRACT_ADDRESS,
         abi: TRIGGER_ABI,
         functionName: 'markExecuted',
         args: [BigInt(triggerId), priceWei, txHashBytes],
         account: this.account,
+        chain: hyperEVMChain,
+        gas: BigInt(500000),
+        nonce,
       })
+      
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
 
-      const hash = await this.walletClient.writeContract(request)
-      await this.publicClient.waitForTransactionReceipt({ hash })
+      if (receipt.status === 'reverted') {
+        logger.error(`markExecuted transaction REVERTED for trigger ${triggerId}`, { 
+          hash, 
+          status: receipt.status,
+          blockNumber: receipt.blockNumber?.toString(),
+        })
+        return null
+      }
 
-      logger.info(`Marked trigger ${triggerId} as executed on-chain`, { hash })
-      return true
+      logger.info(`✅ Marked trigger ${triggerId} as executed on-chain`, { hash, status: receipt.status })
+      return hash
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
+      
+      // Retry on nonce/replacement errors
+      if (retryCount < MAX_RETRIES && (
+        errorMsg.includes('replacement transaction underpriced') ||
+        errorMsg.includes('nonce') ||
+        errorMsg.includes('already known')
+      )) {
+        logger.warn(`Retrying markExecuted for trigger ${triggerId} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
+        await new Promise(r => setTimeout(r, 2000)) // Wait 2 seconds before retry
+        return this.markTriggerExecuted(triggerId, executionPrice, txHash, retryCount + 1)
+      }
+      
       logger.error(`Failed to mark trigger ${triggerId} as executed`, { error: errorMsg })
-      return false
+      return null
     }
   }
 
@@ -746,21 +896,34 @@ class TriggerWorker {
    */
   async markTriggerFailed(triggerId: number, reason: string): Promise<boolean> {
     try {
-      const { request } = await this.publicClient.simulateContract({
+      // Use explicit gas limit to avoid estimation issues on HyperEVM
+      const hash = await this.walletClient.writeContract({
         address: TRIGGER_CONTRACT_ADDRESS,
         abi: TRIGGER_ABI,
         functionName: 'markFailed',
         args: [BigInt(triggerId), reason],
         account: this.account,
+        chain: hyperEVMChain,
+        gas: BigInt(500000), // Explicit gas limit
       })
+      
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
 
-      const hash = await this.walletClient.writeContract(request)
-      await this.publicClient.waitForTransactionReceipt({ hash })
+      if (receipt.status === 'reverted') {
+        logger.error(`markFailed transaction REVERTED for trigger ${triggerId}`, { hash, reason })
+        return false
+      }
 
-      logger.info(`Marked trigger ${triggerId} as failed on-chain`, { hash, reason })
+      logger.info(`Marked trigger ${triggerId} as failed on-chain`, { hash, reason, status: receipt.status })
       return true
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
+      // Handle BigInt in error objects
+      let errorMsg: string
+      try {
+        errorMsg = error instanceof Error ? error.message : JSON.stringify(error, (_, v) => typeof v === 'bigint' ? v.toString() : v)
+      } catch {
+        errorMsg = String(error)
+      }
       logger.error(`Failed to mark trigger ${triggerId} as failed`, { error: errorMsg })
       return false
     }
@@ -832,11 +995,33 @@ class TriggerWorker {
         // Mark as executed on-chain
         const onChainHash = await this.markTriggerExecuted(triggerId, tradeResult.executionPrice, tradeResult.txHash)
         if (onChainHash) {
-          logger.info(`✅ Trigger ${triggerId} executed and marked on-chain`, {
-            executionPrice: tradeResult.executionPrice,
-            hlOrderId: tradeResult.txHash,
-            onChainTx: onChainHash,
-          })
+          // Verify the status actually changed
+          try {
+            const verifyTrigger = await this.publicClient.readContract({
+              address: TRIGGER_CONTRACT_ADDRESS,
+              abi: TRIGGER_ABI,
+              functionName: 'getTrigger',
+              args: [BigInt(triggerId)],
+            }) as OnChainTrigger
+            
+            if (verifyTrigger.status === TriggerStatus.Executed) {
+              logger.info(`✅ Trigger ${triggerId} executed and marked on-chain (VERIFIED)`, {
+                executionPrice: tradeResult.executionPrice,
+                hlOrderId: tradeResult.txHash,
+                onChainTx: onChainHash,
+              })
+            } else {
+              logger.error(`❌ Trigger ${triggerId} markExecuted TX succeeded but status is still ${verifyTrigger.status}!`, {
+                onChainTx: onChainHash,
+                expectedStatus: TriggerStatus.Executed,
+                actualStatus: verifyTrigger.status,
+              })
+            }
+          } catch (verifyError) {
+            logger.warn(`⚠️ Could not verify trigger ${triggerId} status after marking`, { 
+              error: verifyError instanceof Error ? verifyError.message : String(verifyError) 
+            })
+          }
         } else {
           // Trade succeeded but on-chain marking failed
           // The trigger is in database so it won't re-trade
@@ -924,8 +1109,8 @@ class TriggerWorker {
     // Initial check
     await this.checkAndExecuteTriggers()
 
-    // Schedule checks every 15 seconds to avoid rate limiting
-    cron.schedule('*/15 * * * * *', async () => {
+    // Schedule checks every 5 seconds for faster execution
+    cron.schedule('*/5 * * * * *', async () => {
       if (!this.isRunning) return
       await this.checkAndExecuteTriggers()
     })

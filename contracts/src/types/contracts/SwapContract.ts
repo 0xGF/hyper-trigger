@@ -33,6 +33,8 @@ export declare namespace SwapContract {
     slippageBps: BigNumberish;
     timestamp: BigNumberish;
     completed: boolean;
+    status: BigNumberish;
+    fromTokenAddress: AddressLike;
   };
 
   export type SwapRequestStructOutput = [
@@ -43,7 +45,9 @@ export declare namespace SwapContract {
     minOutputAmount: bigint,
     slippageBps: bigint,
     timestamp: bigint,
-    completed: boolean
+    completed: boolean,
+    status: bigint,
+    fromTokenAddress: string
   ] & {
     user: string;
     fromToken: bigint;
@@ -53,6 +57,8 @@ export declare namespace SwapContract {
     slippageBps: bigint;
     timestamp: bigint;
     completed: boolean;
+    status: bigint;
+    fromTokenAddress: string;
   };
 }
 
@@ -73,17 +79,22 @@ export interface SwapContractInterface extends Interface {
       | "getUserSwaps"
       | "grantRole"
       | "hasRole"
+      | "isRefundable"
+      | "markSwapFailed"
       | "nextSwapId"
       | "pause"
       | "paused"
       | "renounceRole"
+      | "requestRefund"
       | "revokeRole"
       | "sendHypeToSystem"
       | "supportsInterface"
       | "swapFee"
       | "swapRequests"
+      | "swapTimeout"
       | "unpause"
       | "updateSwapFee"
+      | "updateSwapTimeout"
       | "userSwaps"
       | "withdrawFees"
   ): FunctionFragment;
@@ -97,7 +108,10 @@ export interface SwapContractInterface extends Interface {
       | "RoleGranted"
       | "RoleRevoked"
       | "SwapCompleted"
+      | "SwapFailed"
       | "SwapInitiated"
+      | "SwapRefunded"
+      | "SwapTimeoutUpdated"
       | "Unpaused"
   ): EventFragment;
 
@@ -165,6 +179,14 @@ export interface SwapContractInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "isRefundable",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "markSwapFailed",
+    values: [BigNumberish, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "nextSwapId",
     values?: undefined
   ): string;
@@ -173,6 +195,10 @@ export interface SwapContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "requestRefund",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
@@ -191,9 +217,17 @@ export interface SwapContractInterface extends Interface {
     functionFragment: "swapRequests",
     values: [BigNumberish]
   ): string;
+  encodeFunctionData(
+    functionFragment: "swapTimeout",
+    values?: undefined
+  ): string;
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "updateSwapFee",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "updateSwapTimeout",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
@@ -252,11 +286,23 @@ export interface SwapContractInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "isRefundable",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "markSwapFailed",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "nextSwapId", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "requestRefund",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
@@ -273,9 +319,17 @@ export interface SwapContractInterface extends Interface {
     functionFragment: "swapRequests",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "swapTimeout",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "updateSwapFee",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "updateSwapTimeout",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "userSwaps", data: BytesLike): Result;
@@ -402,6 +456,24 @@ export namespace SwapCompletedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace SwapFailedEvent {
+  export type InputTuple = [
+    swapId: BigNumberish,
+    user: AddressLike,
+    reason: string
+  ];
+  export type OutputTuple = [swapId: bigint, user: string, reason: string];
+  export interface OutputObject {
+    swapId: bigint;
+    user: string;
+    reason: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace SwapInitiatedEvent {
   export type InputTuple = [
     swapId: BigNumberish,
@@ -426,6 +498,40 @@ export namespace SwapInitiatedEvent {
     toToken: bigint;
     fromAmount: bigint;
     minOutputAmount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace SwapRefundedEvent {
+  export type InputTuple = [
+    swapId: BigNumberish,
+    user: AddressLike,
+    refundAmount: BigNumberish
+  ];
+  export type OutputTuple = [
+    swapId: bigint,
+    user: string,
+    refundAmount: bigint
+  ];
+  export interface OutputObject {
+    swapId: bigint;
+    user: string;
+    refundAmount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace SwapTimeoutUpdatedEvent {
+  export type InputTuple = [newTimeout: BigNumberish];
+  export type OutputTuple = [newTimeout: bigint];
+  export interface OutputObject {
+    newTimeout: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -559,6 +665,18 @@ export interface SwapContract extends BaseContract {
     "view"
   >;
 
+  isRefundable: TypedContractMethod<
+    [swapId: BigNumberish],
+    [[boolean, string] & { eligible: boolean; reason: string }],
+    "view"
+  >;
+
+  markSwapFailed: TypedContractMethod<
+    [swapId: BigNumberish, reason: string],
+    [void],
+    "nonpayable"
+  >;
+
   nextSwapId: TypedContractMethod<[], [bigint], "view">;
 
   pause: TypedContractMethod<[], [void], "nonpayable">;
@@ -567,6 +685,12 @@ export interface SwapContract extends BaseContract {
 
   renounceRole: TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
+  requestRefund: TypedContractMethod<
+    [swapId: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -590,7 +714,18 @@ export interface SwapContract extends BaseContract {
   swapRequests: TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, bigint, bigint, bigint, bigint, bigint, bigint, boolean] & {
+      [
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        boolean,
+        bigint,
+        string
+      ] & {
         user: string;
         fromToken: bigint;
         toToken: bigint;
@@ -599,15 +734,25 @@ export interface SwapContract extends BaseContract {
         slippageBps: bigint;
         timestamp: bigint;
         completed: boolean;
+        status: bigint;
+        fromTokenAddress: string;
       }
     ],
     "view"
   >;
 
+  swapTimeout: TypedContractMethod<[], [bigint], "view">;
+
   unpause: TypedContractMethod<[], [void], "nonpayable">;
 
   updateSwapFee: TypedContractMethod<
     [newFee: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  updateSwapTimeout: TypedContractMethod<
+    [newTimeout: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -702,6 +847,20 @@ export interface SwapContract extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "isRefundable"
+  ): TypedContractMethod<
+    [swapId: BigNumberish],
+    [[boolean, string] & { eligible: boolean; reason: string }],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "markSwapFailed"
+  ): TypedContractMethod<
+    [swapId: BigNumberish, reason: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "nextSwapId"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
@@ -717,6 +876,9 @@ export interface SwapContract extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "requestRefund"
+  ): TypedContractMethod<[swapId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "revokeRole"
   ): TypedContractMethod<
@@ -738,7 +900,18 @@ export interface SwapContract extends BaseContract {
   ): TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, bigint, bigint, bigint, bigint, bigint, bigint, boolean] & {
+      [
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        boolean,
+        bigint,
+        string
+      ] & {
         user: string;
         fromToken: bigint;
         toToken: bigint;
@@ -747,16 +920,24 @@ export interface SwapContract extends BaseContract {
         slippageBps: bigint;
         timestamp: bigint;
         completed: boolean;
+        status: bigint;
+        fromTokenAddress: string;
       }
     ],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "swapTimeout"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "unpause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "updateSwapFee"
   ): TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "updateSwapTimeout"
+  ): TypedContractMethod<[newTimeout: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "userSwaps"
   ): TypedContractMethod<
@@ -818,11 +999,32 @@ export interface SwapContract extends BaseContract {
     SwapCompletedEvent.OutputObject
   >;
   getEvent(
+    key: "SwapFailed"
+  ): TypedContractEvent<
+    SwapFailedEvent.InputTuple,
+    SwapFailedEvent.OutputTuple,
+    SwapFailedEvent.OutputObject
+  >;
+  getEvent(
     key: "SwapInitiated"
   ): TypedContractEvent<
     SwapInitiatedEvent.InputTuple,
     SwapInitiatedEvent.OutputTuple,
     SwapInitiatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "SwapRefunded"
+  ): TypedContractEvent<
+    SwapRefundedEvent.InputTuple,
+    SwapRefundedEvent.OutputTuple,
+    SwapRefundedEvent.OutputObject
+  >;
+  getEvent(
+    key: "SwapTimeoutUpdated"
+  ): TypedContractEvent<
+    SwapTimeoutUpdatedEvent.InputTuple,
+    SwapTimeoutUpdatedEvent.OutputTuple,
+    SwapTimeoutUpdatedEvent.OutputObject
   >;
   getEvent(
     key: "Unpaused"
@@ -910,6 +1112,17 @@ export interface SwapContract extends BaseContract {
       SwapCompletedEvent.OutputObject
     >;
 
+    "SwapFailed(uint256,address,string)": TypedContractEvent<
+      SwapFailedEvent.InputTuple,
+      SwapFailedEvent.OutputTuple,
+      SwapFailedEvent.OutputObject
+    >;
+    SwapFailed: TypedContractEvent<
+      SwapFailedEvent.InputTuple,
+      SwapFailedEvent.OutputTuple,
+      SwapFailedEvent.OutputObject
+    >;
+
     "SwapInitiated(uint256,address,uint64,uint64,uint256,uint256)": TypedContractEvent<
       SwapInitiatedEvent.InputTuple,
       SwapInitiatedEvent.OutputTuple,
@@ -919,6 +1132,28 @@ export interface SwapContract extends BaseContract {
       SwapInitiatedEvent.InputTuple,
       SwapInitiatedEvent.OutputTuple,
       SwapInitiatedEvent.OutputObject
+    >;
+
+    "SwapRefunded(uint256,address,uint256)": TypedContractEvent<
+      SwapRefundedEvent.InputTuple,
+      SwapRefundedEvent.OutputTuple,
+      SwapRefundedEvent.OutputObject
+    >;
+    SwapRefunded: TypedContractEvent<
+      SwapRefundedEvent.InputTuple,
+      SwapRefundedEvent.OutputTuple,
+      SwapRefundedEvent.OutputObject
+    >;
+
+    "SwapTimeoutUpdated(uint256)": TypedContractEvent<
+      SwapTimeoutUpdatedEvent.InputTuple,
+      SwapTimeoutUpdatedEvent.OutputTuple,
+      SwapTimeoutUpdatedEvent.OutputObject
+    >;
+    SwapTimeoutUpdated: TypedContractEvent<
+      SwapTimeoutUpdatedEvent.InputTuple,
+      SwapTimeoutUpdatedEvent.OutputTuple,
+      SwapTimeoutUpdatedEvent.OutputObject
     >;
 
     "Unpaused(address)": TypedContractEvent<

@@ -50,6 +50,10 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
     // 200 = 2% max deviation
     uint256 public maxPriceDeviation = 200;
     
+    // Whether to require oracle verification for execution (default: false for compatibility)
+    // When enabled, markExecuted will revert if oracle price deviates too much
+    bool public requireOracleVerification = false;
+    
     enum TriggerStatus { Active, Executed, Cancelled, Expired, Failed }
     
     /**
@@ -118,6 +122,7 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
     event FeeUpdated(uint256 newFee);
     event AssetIndexSet(string asset, uint32 spotIndex);
     event PriceDeviationUpdated(uint256 newMaxDeviation);
+    event OracleVerificationUpdated(bool required);
     
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -240,7 +245,9 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
     
     /**
      * @dev Mark trigger as executed (called by worker after executing trade on Hyperliquid)
-     * Verifies execution price against on-chain oracle
+     * NOTE: Price verification happens BEFORE trading in the worker, not here.
+     * This function just records what happened - the trade already executed.
+     * If requireOracleVerification is enabled, will verify execution price against oracle.
      * @param triggerId The trigger to mark executed
      * @param executionPrice The price at which the trade was executed
      * @param executionTxHash The Hyperliquid order ID or transaction reference
@@ -253,17 +260,17 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
         Trigger storage trigger = triggers[triggerId];
         require(trigger.status == TriggerStatus.Active, "Trigger not active");
         
-        // Verify execution price against oracle (for the trade asset)
-        require(
-            verifyPriceWithOracle(trigger.tradeAsset, executionPrice),
-            "Execution price deviates too much from oracle"
-        );
+        // Optional oracle verification (when enabled)
+        if (requireOracleVerification) {
+            bool priceValid = verifyPriceWithOracle(trigger.tradeAsset, executionPrice);
+            require(priceValid, "Execution price deviates from oracle");
+        }
         
         trigger.status = TriggerStatus.Executed;
         trigger.executedAt = block.timestamp;
         trigger.executionPrice = executionPrice;
         trigger.executionTxHash = executionTxHash;
-        activeTriggerCount--;  // Decrement counter
+        if (activeTriggerCount > 0) activeTriggerCount--;  // Safe decrement
         
         emit TriggerExecuted(triggerId, msg.sender, executionPrice, executionTxHash);
     }
@@ -278,7 +285,7 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
         require(trigger.status == TriggerStatus.Active, "Trigger not active");
         
         trigger.status = TriggerStatus.Failed;
-        activeTriggerCount--;  // Decrement counter
+        if (activeTriggerCount > 0) activeTriggerCount--;  // Safe decrement
         
         emit TriggerFailed(triggerId, reason);
     }
@@ -296,7 +303,7 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
         
         // Update state first
         trigger.status = TriggerStatus.Cancelled;
-        activeTriggerCount--;  // Decrement counter
+        if (activeTriggerCount > 0) activeTriggerCount--;  // Safe decrement
         
         // Refund the actual fee paid (not current triggerFee)
         if (refundAmount > 0) {
@@ -334,7 +341,7 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
         
         // Cancel old trigger (update state)
         oldTrigger.status = TriggerStatus.Cancelled;
-        activeTriggerCount--;
+        if (activeTriggerCount > 0) activeTriggerCount--;  // Safe decrement
         
         emit TriggerCancelled(oldTriggerId, msg.sender);
         
@@ -424,7 +431,7 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
             
             if (trigger.status == TriggerStatus.Active && block.timestamp > trigger.expiresAt) {
                 trigger.status = TriggerStatus.Expired;
-                activeTriggerCount--;  // Decrement counter
+                if (activeTriggerCount > 0) activeTriggerCount--;  // Safe decrement
                 emit TriggerExpired(triggerIds[i]);
             }
         }
@@ -472,6 +479,34 @@ contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
     // ============================================
     // Admin Functions
     // ============================================
+    
+    /**
+     * @dev Recalculate activeTriggerCount by scanning triggers
+     * Use this if the counter gets out of sync
+     * @param startId Starting trigger ID to scan from
+     * @param endId Ending trigger ID to scan to (exclusive)
+     */
+    function recalculateActiveTriggerCount(uint256 startId, uint256 endId) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(endId <= nextTriggerId, "End ID too high");
+        require(startId < endId, "Invalid range");
+        
+        uint256 count = 0;
+        for (uint256 i = startId; i < endId; i++) {
+            if (triggers[i].status == TriggerStatus.Active) {
+                count++;
+            }
+        }
+        activeTriggerCount = count;
+    }
+    
+    /**
+     * @dev Enable or disable oracle verification for execution
+     * When enabled, markExecuted will verify the execution price against the oracle
+     */
+    function setRequireOracleVerification(bool required) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        requireOracleVerification = required;
+        emit OracleVerificationUpdated(required);
+    }
     
     function updateTriggerFee(uint256 newFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         triggerFee = newFee;

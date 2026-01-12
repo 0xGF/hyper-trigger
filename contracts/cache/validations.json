@@ -100,6 +100,2108 @@
         },
         "solcVersion": "0.8.20"
       },
+      "@openzeppelin/contracts/interfaces/IERC1363.sol:IERC1363": {
+        "src": "@openzeppelin/contracts/interfaces/IERC1363.sol:16",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20"
+        ],
+        "libraries": [],
+        "methods": [
+          "transferAndCall(address,uint256)",
+          "transferAndCall(address,uint256,bytes)",
+          "transferFromAndCall(address,address,uint256)",
+          "transferFromAndCall(address,address,uint256,bytes)",
+          "approveAndCall(address,uint256)",
+          "approveAndCall(address,uint256,bytes)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20": {
+        "src": "@openzeppelin/contracts/token/ERC20/IERC20.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "totalSupply()",
+          "balanceOf(address)",
+          "transfer(address,uint256)",
+          "allowance(address,address)",
+          "approve(address,uint256)",
+          "transferFrom(address,address,uint256)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol:SafeERC20": {
+        "src": "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol:18",
+        "version": {
+          "withMetadata": "dd0f45ebb12b27e40c59a5b7688ef67522fd9a6bdb281f0d921344f6886c776b",
+          "withoutMetadata": "e2a89a66865458f0d9fedd4bc7faf0ee62e4c341d176ab79d29bd77a1bdfc32a",
+          "linkedWithoutMetadata": "e2a89a66865458f0d9fedd4bc7faf0ee62e4c341d176ab79d29bd77a1bdfc32a"
+        },
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Context.sol:Context": {
+        "src": "@openzeppelin/contracts/utils/Context.sol:16",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Pausable.sol:Pausable": {
+        "src": "@openzeppelin/contracts/utils/Pausable.sol:17",
+        "inherit": [
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "paused()"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            }
+          ],
+          "types": {
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard": {
+        "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:25",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "ReentrancyGuard",
+            "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:47"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            }
+          ],
+          "types": {
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/ERC165.sol:20",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/IERC165.sol:15",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/SwapContract.sol:SwapContract": {
+        "src": "contracts/SwapContract.sol:20",
+        "version": {
+          "withMetadata": "7f460752774bf5579f34bac0c071220be5542ebd97f6b06c69d54e1649b8d334",
+          "withoutMetadata": "7f460752774bf5579f34bac0c071220be5542ebd97f6b06c69d54e1649b8d334",
+          "linkedWithoutMetadata": "7f460752774bf5579f34bac0c071220be5542ebd97f6b06c69d54e1649b8d334"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/utils/Pausable.sol:Pausable",
+          "@openzeppelin/contracts/access/AccessControl.sol:AccessControl",
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [
+          "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol:SafeERC20"
+        ],
+        "methods": [
+          "()",
+          "executeSwap(uint64,uint64,uint256,uint256,uint256,address)",
+          "sendHypeToSystem()",
+          "getTokenSystemAddress(uint64)",
+          "getOraclePrice(uint32)",
+          "getSpotBalance(address,uint64)",
+          "completeSwap(uint256,uint256)",
+          "markSwapFailed(uint256,string)",
+          "requestRefund(uint256)",
+          "isRefundable(uint256)",
+          "getUserSwaps(address)",
+          "getSwap(uint256)",
+          "updateSwapFee(uint256)",
+          "updateSwapTimeout(uint256)",
+          "withdrawFees()",
+          "pause()",
+          "unpause()",
+          "emergencyWithdraw(address,uint256)",
+          "()"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "SwapContract",
+            "src": "contracts/SwapContract.sol:94"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "swapFee",
+            "src": "contracts/SwapContract.sol:34"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "swapTimeout",
+            "src": "contracts/SwapContract.sol:38"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "nextSwapId",
+            "src": "contracts/SwapContract.sol:59"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            },
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "swapFee",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_uint256",
+              "contract": "SwapContract",
+              "src": "contracts/SwapContract.sol:34"
+            },
+            {
+              "label": "swapTimeout",
+              "offset": 0,
+              "slot": "4",
+              "type": "t_uint256",
+              "contract": "SwapContract",
+              "src": "contracts/SwapContract.sol:38"
+            },
+            {
+              "label": "swapRequests",
+              "offset": 0,
+              "slot": "5",
+              "type": "t_mapping(t_uint256,t_struct(SwapRequest)1325_storage)",
+              "contract": "SwapContract",
+              "src": "contracts/SwapContract.sol:57"
+            },
+            {
+              "label": "userSwaps",
+              "offset": 0,
+              "slot": "6",
+              "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+              "contract": "SwapContract",
+              "src": "contracts/SwapContract.sol:58"
+            },
+            {
+              "label": "nextSwapId",
+              "offset": 0,
+              "slot": "7",
+              "type": "t_uint256",
+              "contract": "SwapContract",
+              "src": "contracts/SwapContract.sol:59"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_uint256)dyn_storage": {
+              "label": "uint256[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_enum(SwapStatus)1303": {
+              "label": "enum SwapContract.SwapStatus",
+              "members": [
+                "Pending",
+                "Completed",
+                "Refunded",
+                "Failed"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+              "label": "mapping(address => uint256[])",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_uint256,t_struct(SwapRequest)1325_storage)": {
+              "label": "mapping(uint256 => struct SwapContract.SwapRequest)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            },
+            "t_struct(SwapRequest)1325_storage": {
+              "label": "struct SwapContract.SwapRequest",
+              "members": [
+                {
+                  "label": "user",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "fromToken",
+                  "type": "t_uint64",
+                  "offset": 20,
+                  "slot": "0"
+                },
+                {
+                  "label": "toToken",
+                  "type": "t_uint64",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "fromAmount",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "minOutputAmount",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "slippageBps",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "timestamp",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "5"
+                },
+                {
+                  "label": "completed",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "6"
+                },
+                {
+                  "label": "status",
+                  "type": "t_enum(SwapStatus)1303",
+                  "offset": 1,
+                  "slot": "6"
+                },
+                {
+                  "label": "fromTokenAddress",
+                  "type": "t_address",
+                  "offset": 2,
+                  "slot": "6"
+                }
+              ],
+              "numberOfBytes": "224"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            },
+            "t_uint64": {
+              "label": "uint64",
+              "numberOfBytes": "8"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:IL1Read": {
+        "src": "contracts/TriggerContract.sol:12",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "oraclePx(uint32)",
+          "spotOraclePx(uint32)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:TriggerContract": {
+        "src": "contracts/TriggerContract.sol:38",
+        "version": {
+          "withMetadata": "99371e8b65ecba9f3f56712d5ac3ffdc67d664ef2f8875acbbb8d66d2f2fd59c",
+          "withoutMetadata": "99371e8b65ecba9f3f56712d5ac3ffdc67d664ef2f8875acbbb8d66d2f2fd59c",
+          "linkedWithoutMetadata": "99371e8b65ecba9f3f56712d5ac3ffdc67d664ef2f8875acbbb8d66d2f2fd59c"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/utils/Pausable.sol:Pausable",
+          "@openzeppelin/contracts/access/AccessControl.sol:AccessControl",
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "()",
+          "createTrigger(string,uint256,bool,string,bool,uint256,uint256,uint256)",
+          "getOraclePrice(string)",
+          "verifyPriceWithOracle(string,uint256)",
+          "markExecuted(uint256,uint256,bytes32)",
+          "markFailed(uint256,string)",
+          "cancelTrigger(uint256)",
+          "updateTriggerPrice(uint256,uint256,bool)",
+          "checkTrigger(uint256,uint256)",
+          "markExpired(uint256[])",
+          "getTrigger(uint256)",
+          "getUserTriggers(address)",
+          "getUserActiveTriggers(address)",
+          "getActiveTriggerCount()",
+          "recalculateActiveTriggerCount(uint256,uint256)",
+          "setRequireOracleVerification(bool)",
+          "updateTriggerFee(uint256)",
+          "setAssetIndex(string,uint32)",
+          "setAssetIndexes(string[],uint32[])",
+          "updateMaxPriceDeviation(uint256)",
+          "pause()",
+          "unpause()",
+          "withdrawFees()",
+          "()"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "TriggerContract",
+            "src": "contracts/TriggerContract.sol:127"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "triggerFee",
+            "src": "contracts/TriggerContract.sol:45"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "maxPriceDeviation",
+            "src": "contracts/TriggerContract.sol:51"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "requireOracleVerification",
+            "src": "contracts/TriggerContract.sol:55"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "nextTriggerId",
+            "src": "contracts/TriggerContract.sol:93"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            },
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "triggerFee",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:45"
+            },
+            {
+              "label": "maxPriceDeviation",
+              "offset": 0,
+              "slot": "4",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:51"
+            },
+            {
+              "label": "requireOracleVerification",
+              "offset": 0,
+              "slot": "5",
+              "type": "t_bool",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:55"
+            },
+            {
+              "label": "triggers",
+              "offset": 0,
+              "slot": "6",
+              "type": "t_mapping(t_uint256,t_struct(Trigger)2531_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:91"
+            },
+            {
+              "label": "userTriggers",
+              "offset": 0,
+              "slot": "7",
+              "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:92"
+            },
+            {
+              "label": "nextTriggerId",
+              "offset": 0,
+              "slot": "8",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:93"
+            },
+            {
+              "label": "activeTriggerCount",
+              "offset": 0,
+              "slot": "9",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:94"
+            },
+            {
+              "label": "assetToSpotIndex",
+              "offset": 0,
+              "slot": "10",
+              "type": "t_mapping(t_string_memory_ptr,t_uint32)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:98"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_uint256)dyn_storage": {
+              "label": "uint256[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_enum(TriggerStatus)2496": {
+              "label": "enum TriggerContract.TriggerStatus",
+              "members": [
+                "Active",
+                "Executed",
+                "Cancelled",
+                "Expired",
+                "Failed"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+              "label": "mapping(address => uint256[])",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_string_memory_ptr,t_uint32)": {
+              "label": "mapping(string => uint32)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_uint256,t_struct(Trigger)2531_storage)": {
+              "label": "mapping(uint256 => struct TriggerContract.Trigger)",
+              "numberOfBytes": "32"
+            },
+            "t_string_memory_ptr": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_string_storage": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            },
+            "t_struct(Trigger)2531_storage": {
+              "label": "struct TriggerContract.Trigger",
+              "members": [
+                {
+                  "label": "id",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "user",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "watchAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "targetPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "isAbove",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "tradeAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "5"
+                },
+                {
+                  "label": "isBuy",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "6"
+                },
+                {
+                  "label": "amount",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "7"
+                },
+                {
+                  "label": "maxSlippage",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "8"
+                },
+                {
+                  "label": "createdAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "9"
+                },
+                {
+                  "label": "expiresAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "10"
+                },
+                {
+                  "label": "status",
+                  "type": "t_enum(TriggerStatus)2496",
+                  "offset": 0,
+                  "slot": "11"
+                },
+                {
+                  "label": "feePaid",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "12"
+                },
+                {
+                  "label": "executedAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "13"
+                },
+                {
+                  "label": "executionPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "14"
+                },
+                {
+                  "label": "executionTxHash",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "15"
+                }
+              ],
+              "numberOfBytes": "512"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            },
+            "t_uint32": {
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    },
+    {
+      "@openzeppelin/contracts/access/AccessControl.sol:AccessControl": {
+        "src": "@openzeppelin/contracts/access/AccessControl.sol:49",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)",
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl": {
+        "src": "@openzeppelin/contracts/access/IAccessControl.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Context.sol:Context": {
+        "src": "@openzeppelin/contracts/utils/Context.sol:16",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Pausable.sol:Pausable": {
+        "src": "@openzeppelin/contracts/utils/Pausable.sol:17",
+        "inherit": [
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "paused()"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            }
+          ],
+          "types": {
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard": {
+        "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:25",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "ReentrancyGuard",
+            "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:47"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            }
+          ],
+          "types": {
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/ERC165.sol:20",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/IERC165.sol:15",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:IL1Read": {
+        "src": "contracts/TriggerContract.sol:12",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "oraclePx(uint32)",
+          "spotOraclePx(uint32)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:TriggerContract": {
+        "src": "contracts/TriggerContract.sol:38",
+        "version": {
+          "withMetadata": "a303cb733ef9077f78f1b36a6635115f56db1d81152e9853085b1dbfb9e7e977",
+          "withoutMetadata": "a303cb733ef9077f78f1b36a6635115f56db1d81152e9853085b1dbfb9e7e977",
+          "linkedWithoutMetadata": "a303cb733ef9077f78f1b36a6635115f56db1d81152e9853085b1dbfb9e7e977"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/utils/Pausable.sol:Pausable",
+          "@openzeppelin/contracts/access/AccessControl.sol:AccessControl",
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "()",
+          "createTrigger(string,uint256,bool,string,bool,uint256,uint256,uint256)",
+          "getOraclePrice(string)",
+          "verifyPriceWithOracle(string,uint256)",
+          "markExecuted(uint256,uint256,bytes32)",
+          "markFailed(uint256,string)",
+          "cancelTrigger(uint256)",
+          "updateTriggerPrice(uint256,uint256,bool)",
+          "checkTrigger(uint256,uint256)",
+          "markExpired(uint256[])",
+          "getTrigger(uint256)",
+          "getUserTriggers(address)",
+          "getUserActiveTriggers(address)",
+          "getActiveTriggerCount()",
+          "fixActiveTriggerCount(uint256)",
+          "updateTriggerFee(uint256)",
+          "setAssetIndex(string,uint32)",
+          "setAssetIndexes(string[],uint32[])",
+          "updateMaxPriceDeviation(uint256)",
+          "pause()",
+          "unpause()",
+          "withdrawFees()",
+          "()"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "TriggerContract",
+            "src": "contracts/TriggerContract.sol:122"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "triggerFee",
+            "src": "contracts/TriggerContract.sol:45"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "maxPriceDeviation",
+            "src": "contracts/TriggerContract.sol:51"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "nextTriggerId",
+            "src": "contracts/TriggerContract.sol:89"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            },
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "triggerFee",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:45"
+            },
+            {
+              "label": "maxPriceDeviation",
+              "offset": 0,
+              "slot": "4",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:51"
+            },
+            {
+              "label": "triggers",
+              "offset": 0,
+              "slot": "5",
+              "type": "t_mapping(t_uint256,t_struct(Trigger)714_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:87"
+            },
+            {
+              "label": "userTriggers",
+              "offset": 0,
+              "slot": "6",
+              "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:88"
+            },
+            {
+              "label": "nextTriggerId",
+              "offset": 0,
+              "slot": "7",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:89"
+            },
+            {
+              "label": "activeTriggerCount",
+              "offset": 0,
+              "slot": "8",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:90"
+            },
+            {
+              "label": "assetToSpotIndex",
+              "offset": 0,
+              "slot": "9",
+              "type": "t_mapping(t_string_memory_ptr,t_uint32)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:94"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_uint256)dyn_storage": {
+              "label": "uint256[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_enum(TriggerStatus)679": {
+              "label": "enum TriggerContract.TriggerStatus",
+              "members": [
+                "Active",
+                "Executed",
+                "Cancelled",
+                "Expired",
+                "Failed"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+              "label": "mapping(address => uint256[])",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_string_memory_ptr,t_uint32)": {
+              "label": "mapping(string => uint32)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_uint256,t_struct(Trigger)714_storage)": {
+              "label": "mapping(uint256 => struct TriggerContract.Trigger)",
+              "numberOfBytes": "32"
+            },
+            "t_string_memory_ptr": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_string_storage": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            },
+            "t_struct(Trigger)714_storage": {
+              "label": "struct TriggerContract.Trigger",
+              "members": [
+                {
+                  "label": "id",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "user",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "watchAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "targetPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "isAbove",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "tradeAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "5"
+                },
+                {
+                  "label": "isBuy",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "6"
+                },
+                {
+                  "label": "amount",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "7"
+                },
+                {
+                  "label": "maxSlippage",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "8"
+                },
+                {
+                  "label": "createdAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "9"
+                },
+                {
+                  "label": "expiresAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "10"
+                },
+                {
+                  "label": "status",
+                  "type": "t_enum(TriggerStatus)679",
+                  "offset": 0,
+                  "slot": "11"
+                },
+                {
+                  "label": "feePaid",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "12"
+                },
+                {
+                  "label": "executedAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "13"
+                },
+                {
+                  "label": "executionPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "14"
+                },
+                {
+                  "label": "executionTxHash",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "15"
+                }
+              ],
+              "numberOfBytes": "512"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            },
+            "t_uint32": {
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    },
+    {
+      "@openzeppelin/contracts/access/AccessControl.sol:AccessControl": {
+        "src": "@openzeppelin/contracts/access/AccessControl.sol:49",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)",
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl": {
+        "src": "@openzeppelin/contracts/access/IAccessControl.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Context.sol:Context": {
+        "src": "@openzeppelin/contracts/utils/Context.sol:16",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/Pausable.sol:Pausable": {
+        "src": "@openzeppelin/contracts/utils/Pausable.sol:17",
+        "inherit": [
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "paused()"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            }
+          ],
+          "types": {
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard": {
+        "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:25",
+        "inherit": [],
+        "libraries": [],
+        "methods": [],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "ReentrancyGuard",
+            "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:47"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            }
+          ],
+          "types": {
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/ERC165.sol:20",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165": {
+        "src": "@openzeppelin/contracts/utils/introspection/IERC165.sol:15",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:IL1Read": {
+        "src": "contracts/TriggerContract.sol:12",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "oraclePx(uint32)",
+          "spotOraclePx(uint32)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "contracts/TriggerContract.sol:TriggerContract": {
+        "src": "contracts/TriggerContract.sol:38",
+        "version": {
+          "withMetadata": "a04738a9e3041142dbe6c0e5122f984ce130453d6e2ab6849b635f1b1c6fc689",
+          "withoutMetadata": "a04738a9e3041142dbe6c0e5122f984ce130453d6e2ab6849b635f1b1c6fc689",
+          "linkedWithoutMetadata": "a04738a9e3041142dbe6c0e5122f984ce130453d6e2ab6849b635f1b1c6fc689"
+        },
+        "inherit": [
+          "@openzeppelin/contracts/utils/ReentrancyGuard.sol:ReentrancyGuard",
+          "@openzeppelin/contracts/utils/Pausable.sol:Pausable",
+          "@openzeppelin/contracts/access/AccessControl.sol:AccessControl",
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "()",
+          "createTrigger(string,uint256,bool,string,bool,uint256,uint256,uint256)",
+          "getOraclePrice(string)",
+          "verifyPriceWithOracle(string,uint256)",
+          "markExecuted(uint256,uint256,bytes32)",
+          "markFailed(uint256,string)",
+          "cancelTrigger(uint256)",
+          "updateTriggerPrice(uint256,uint256,bool)",
+          "checkTrigger(uint256,uint256)",
+          "markExpired(uint256[])",
+          "getTrigger(uint256)",
+          "getUserTriggers(address)",
+          "getUserActiveTriggers(address)",
+          "getActiveTriggerCount()",
+          "fixActiveTriggerCount(uint256)",
+          "updateTriggerFee(uint256)",
+          "setAssetIndex(string,uint32)",
+          "setAssetIndexes(string[],uint32[])",
+          "updateMaxPriceDeviation(uint256)",
+          "pause()",
+          "unpause()",
+          "withdrawFees()",
+          "()"
+        ],
+        "linkReferences": [],
+        "errors": [
+          {
+            "kind": "constructor",
+            "contract": "TriggerContract",
+            "src": "contracts/TriggerContract.sol:122"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "triggerFee",
+            "src": "contracts/TriggerContract.sol:45"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "maxPriceDeviation",
+            "src": "contracts/TriggerContract.sol:51"
+          },
+          {
+            "kind": "state-variable-assignment",
+            "name": "nextTriggerId",
+            "src": "contracts/TriggerContract.sol:89"
+          }
+        ],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            },
+            {
+              "label": "_paused",
+              "offset": 0,
+              "slot": "1",
+              "type": "t_bool",
+              "contract": "Pausable",
+              "src": "@openzeppelin/contracts/utils/Pausable.sol:18"
+            },
+            {
+              "label": "_status",
+              "offset": 0,
+              "slot": "2",
+              "type": "t_uint256",
+              "contract": "ReentrancyGuard",
+              "src": "@openzeppelin/contracts/utils/ReentrancyGuard.sol:40"
+            },
+            {
+              "label": "triggerFee",
+              "offset": 0,
+              "slot": "3",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:45"
+            },
+            {
+              "label": "maxPriceDeviation",
+              "offset": 0,
+              "slot": "4",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:51"
+            },
+            {
+              "label": "triggers",
+              "offset": 0,
+              "slot": "5",
+              "type": "t_mapping(t_uint256,t_struct(Trigger)714_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:87"
+            },
+            {
+              "label": "userTriggers",
+              "offset": 0,
+              "slot": "6",
+              "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:88"
+            },
+            {
+              "label": "nextTriggerId",
+              "offset": 0,
+              "slot": "7",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:89"
+            },
+            {
+              "label": "activeTriggerCount",
+              "offset": 0,
+              "slot": "8",
+              "type": "t_uint256",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:90"
+            },
+            {
+              "label": "assetToSpotIndex",
+              "offset": 0,
+              "slot": "9",
+              "type": "t_mapping(t_string_memory_ptr,t_uint32)",
+              "contract": "TriggerContract",
+              "src": "contracts/TriggerContract.sol:94"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_array(t_uint256)dyn_storage": {
+              "label": "uint256[]",
+              "numberOfBytes": "32"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_enum(TriggerStatus)679": {
+              "label": "enum TriggerContract.TriggerStatus",
+              "members": [
+                "Active",
+                "Executed",
+                "Cancelled",
+                "Expired",
+                "Failed"
+              ],
+              "numberOfBytes": "1"
+            },
+            "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+              "label": "mapping(address => uint256[])",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_string_memory_ptr,t_uint32)": {
+              "label": "mapping(string => uint32)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_uint256,t_struct(Trigger)714_storage)": {
+              "label": "mapping(uint256 => struct TriggerContract.Trigger)",
+              "numberOfBytes": "32"
+            },
+            "t_string_memory_ptr": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_string_storage": {
+              "label": "string",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            },
+            "t_struct(Trigger)714_storage": {
+              "label": "struct TriggerContract.Trigger",
+              "members": [
+                {
+                  "label": "id",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "user",
+                  "type": "t_address",
+                  "offset": 0,
+                  "slot": "1"
+                },
+                {
+                  "label": "watchAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "2"
+                },
+                {
+                  "label": "targetPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "3"
+                },
+                {
+                  "label": "isAbove",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "4"
+                },
+                {
+                  "label": "tradeAsset",
+                  "type": "t_string_storage",
+                  "offset": 0,
+                  "slot": "5"
+                },
+                {
+                  "label": "isBuy",
+                  "type": "t_bool",
+                  "offset": 0,
+                  "slot": "6"
+                },
+                {
+                  "label": "amount",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "7"
+                },
+                {
+                  "label": "maxSlippage",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "8"
+                },
+                {
+                  "label": "createdAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "9"
+                },
+                {
+                  "label": "expiresAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "10"
+                },
+                {
+                  "label": "status",
+                  "type": "t_enum(TriggerStatus)679",
+                  "offset": 0,
+                  "slot": "11"
+                },
+                {
+                  "label": "feePaid",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "12"
+                },
+                {
+                  "label": "executedAt",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "13"
+                },
+                {
+                  "label": "executionPrice",
+                  "type": "t_uint256",
+                  "offset": 0,
+                  "slot": "14"
+                },
+                {
+                  "label": "executionTxHash",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "15"
+                }
+              ],
+              "numberOfBytes": "512"
+            },
+            "t_uint256": {
+              "label": "uint256",
+              "numberOfBytes": "32"
+            },
+            "t_uint32": {
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      }
+    },
+    {
+      "@openzeppelin/contracts/access/AccessControl.sol:AccessControl": {
+        "src": "@openzeppelin/contracts/access/AccessControl.sol:49",
+        "inherit": [
+          "@openzeppelin/contracts/utils/introspection/ERC165.sol:ERC165",
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165",
+          "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl",
+          "@openzeppelin/contracts/utils/Context.sol:Context"
+        ],
+        "libraries": [],
+        "methods": [
+          "supportsInterface(bytes4)",
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [
+            {
+              "label": "_roles",
+              "offset": 0,
+              "slot": "0",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)22_storage)",
+              "contract": "AccessControl",
+              "src": "@openzeppelin/contracts/access/AccessControl.sol:55"
+            }
+          ],
+          "types": {
+            "t_address": {
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "t_bool": {
+              "label": "bool",
+              "numberOfBytes": "1"
+            },
+            "t_bytes32": {
+              "label": "bytes32",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_address,t_bool)": {
+              "label": "mapping(address => bool)",
+              "numberOfBytes": "32"
+            },
+            "t_mapping(t_bytes32,t_struct(RoleData)22_storage)": {
+              "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+              "numberOfBytes": "32"
+            },
+            "t_struct(RoleData)22_storage": {
+              "label": "struct AccessControl.RoleData",
+              "members": [
+                {
+                  "label": "hasRole",
+                  "type": "t_mapping(t_address,t_bool)",
+                  "offset": 0,
+                  "slot": "0"
+                },
+                {
+                  "label": "adminRole",
+                  "type": "t_bytes32",
+                  "offset": 0,
+                  "slot": "1"
+                }
+              ],
+              "numberOfBytes": "64"
+            }
+          },
+          "layoutVersion": "1.2",
+          "flat": true,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
+      "@openzeppelin/contracts/access/IAccessControl.sol:IAccessControl": {
+        "src": "@openzeppelin/contracts/access/IAccessControl.sol:9",
+        "inherit": [],
+        "libraries": [],
+        "methods": [
+          "hasRole(bytes32,address)",
+          "getRoleAdmin(bytes32)",
+          "grantRole(bytes32,address)",
+          "revokeRole(bytes32,address)",
+          "renounceRole(bytes32,address)"
+        ],
+        "linkReferences": [],
+        "errors": [],
+        "layout": {
+          "storage": [],
+          "types": {},
+          "layoutVersion": "1.2",
+          "flat": false,
+          "namespaces": {}
+        },
+        "solcVersion": "0.8.20"
+      },
       "@openzeppelin/contracts/utils/Context.sol:Context": {
         "src": "@openzeppelin/contracts/utils/Context.sol:16",
         "inherit": [],

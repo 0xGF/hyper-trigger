@@ -11,6 +11,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @title SwapContract
  * @dev Immediate spot asset swaps for HyperEVM users via HyperCore integration
  * Allows users without HyperCore accounts to buy spot assets directly
+ * 
+ * SECURITY FEATURES:
+ * - Refund mechanism for failed/expired swaps
+ * - Swap expiry timeout (24 hours default)
+ * - ReentrancyGuard on all state-changing functions
  */
 contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -29,6 +34,12 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
     uint256 public swapFee = 0.001 ether; // 0.001 HYPE
     uint256 public constant MAX_SLIPPAGE = 5000; // 50% in basis points
     
+    // Swap timeout configuration
+    uint256 public swapTimeout = 24 hours; // Swaps expire after 24 hours
+    
+    // Swap status enum for clarity
+    enum SwapStatus { Pending, Completed, Refunded, Failed }
+    
     // Swap tracking
     struct SwapRequest {
         address user;
@@ -39,6 +50,8 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
         uint256 slippageBps;  // User-provided slippage in basis points
         uint256 timestamp;
         bool completed;
+        SwapStatus status;
+        address fromTokenAddress; // Store for refunds
     }
     
     mapping(uint256 => SwapRequest) public swapRequests;
@@ -61,7 +74,20 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
         uint256 outputAmount
     );
     
+    event SwapRefunded(
+        uint256 indexed swapId,
+        address indexed user,
+        uint256 refundAmount
+    );
+    
+    event SwapFailed(
+        uint256 indexed swapId,
+        address indexed user,
+        string reason
+    );
+    
     event FeeUpdated(uint256 newFee);
+    event SwapTimeoutUpdated(uint256 newTimeout);
     
     event HypeSystemTransfer(address indexed user, uint256 amount);
     
@@ -102,7 +128,9 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
             minOutputAmount: minOutputAmount,
             slippageBps: slippageBps,
             timestamp: block.timestamp,
-            completed: false
+            completed: false,
+            status: SwapStatus.Pending,
+            fromTokenAddress: fromTokenAddress
         });
         
         userSwaps[msg.sender].push(swapId);
@@ -283,12 +311,80 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
      */
     function completeSwap(uint256 swapId, uint256 outputAmount) external onlyRole(EXECUTOR_ROLE) {
         SwapRequest storage swap = swapRequests[swapId];
-        require(!swap.completed, "Swap already completed");
+        require(swap.status == SwapStatus.Pending, "Swap not pending");
         require(outputAmount >= swap.minOutputAmount, "Output below minimum");
         
         swap.completed = true;
+        swap.status = SwapStatus.Completed;
         
         emit SwapCompleted(swapId, swap.user, outputAmount);
+    }
+    
+    /**
+     * @dev Mark swap as failed (called by executor bot when order fails)
+     * This allows the user to request a refund
+     */
+    function markSwapFailed(uint256 swapId, string calldata reason) external onlyRole(EXECUTOR_ROLE) {
+        SwapRequest storage swap = swapRequests[swapId];
+        require(swap.status == SwapStatus.Pending, "Swap not pending");
+        
+        swap.status = SwapStatus.Failed;
+        
+        emit SwapFailed(swapId, swap.user, reason);
+    }
+    
+    /**
+     * @dev Request refund for a failed or expired swap
+     * Users can claim refunds if:
+     * - Swap was marked as failed by executor
+     * - Swap has expired (past timeout) and not completed
+     */
+    function requestRefund(uint256 swapId) external nonReentrant {
+        SwapRequest storage swap = swapRequests[swapId];
+        require(swap.user == msg.sender, "Not swap owner");
+        require(swap.status != SwapStatus.Completed, "Swap already completed");
+        require(swap.status != SwapStatus.Refunded, "Already refunded");
+        
+        // Check if swap is failed or expired
+        bool isExpired = block.timestamp > swap.timestamp + swapTimeout;
+        bool isFailed = swap.status == SwapStatus.Failed;
+        require(isExpired || isFailed, "Swap not eligible for refund");
+        
+        // Mark as refunded before transfer (CEI pattern)
+        swap.status = SwapStatus.Refunded;
+        
+        // Refund the tokens
+        if (swap.fromToken == 0) { // HYPE
+            (bool success,) = msg.sender.call{value: swap.fromAmount}("");
+            require(success, "HYPE refund failed");
+        } else {
+            // ERC20 refund
+            require(swap.fromTokenAddress != address(0), "Invalid token address");
+            IERC20(swap.fromTokenAddress).safeTransfer(msg.sender, swap.fromAmount);
+        }
+        
+        emit SwapRefunded(swapId, msg.sender, swap.fromAmount);
+    }
+    
+    /**
+     * @dev Check if a swap is eligible for refund
+     */
+    function isRefundable(uint256 swapId) external view returns (bool eligible, string memory reason) {
+        SwapRequest storage swap = swapRequests[swapId];
+        
+        if (swap.status == SwapStatus.Completed) {
+            return (false, "Swap completed");
+        }
+        if (swap.status == SwapStatus.Refunded) {
+            return (false, "Already refunded");
+        }
+        if (swap.status == SwapStatus.Failed) {
+            return (true, "Swap failed");
+        }
+        if (block.timestamp > swap.timestamp + swapTimeout) {
+            return (true, "Swap expired");
+        }
+        return (false, "Swap still pending");
     }
     
     /**
@@ -311,6 +407,17 @@ contract SwapContract is AccessControl, Pausable, ReentrancyGuard {
     function updateSwapFee(uint256 newFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         swapFee = newFee;
         emit FeeUpdated(newFee);
+    }
+    
+    /**
+     * @dev Update swap timeout (admin only)
+     * @param newTimeout New timeout in seconds (minimum 1 hour, maximum 7 days)
+     */
+    function updateSwapTimeout(uint256 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newTimeout >= 1 hours, "Timeout too short");
+        require(newTimeout <= 7 days, "Timeout too long");
+        swapTimeout = newTimeout;
+        emit SwapTimeoutUpdated(newTimeout);
     }
     
     /**

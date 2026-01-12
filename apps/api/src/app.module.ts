@@ -9,7 +9,6 @@ import { AnalyticsModule } from './analytics/analytics.module'
 import { HealthModule } from './health/health.module'
 import { HyperliquidModule } from './hyperliquid/hyperliquid.module'
 import { DatabaseModule } from './database/database.module'
-import { QueueModule } from './queue/queue.module'
 import { ApiKeyGuard } from './auth/api-key.guard'
 
 @Module({
@@ -28,7 +27,6 @@ import { ApiKeyGuard } from './auth/api-key.guard'
       }]),
     }),
     DatabaseModule,
-    QueueModule,
     HyperliquidModule,
     HealthModule,
     PricesModule,
@@ -50,4 +48,3 @@ import { ApiKeyGuard } from './auth/api-key.guard'
   ],
 })
 export class AppModule {}
-

@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiSec
 import { TriggersService } from './triggers.service'
 import { ExecutionRepository } from '../database/repositories/execution.repository'
 import { TriggerRepository } from '../database/repositories/trigger.repository'
-import { QueueService } from '../queue/queue.service'
 import { WorkerOnly } from '../auth/api-key.guard'
 import {
   TriggerDto,
@@ -12,7 +11,6 @@ import {
   TriggersQueryDto,
   MarkTradedDto,
   ExecutionResponseDto,
-  QueueStatsDto,
 } from './dto/triggers.dto'
 
 @ApiTags('triggers')
@@ -22,7 +20,6 @@ export class TriggersController {
     private readonly triggersService: TriggersService,
     private readonly executionRepo: ExecutionRepository,
     private readonly triggerRepo: TriggerRepository,
-    private readonly queueService: QueueService,
   ) {}
 
   @Get()
@@ -43,19 +40,17 @@ export class TriggersController {
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Get trigger and queue stats', description: 'Returns statistics about triggers and job queues' })
+  @ApiOperation({ summary: 'Get trigger stats', description: 'Returns statistics about triggers' })
   @ApiResponse({ status: 200, description: 'Stats response' })
   async getStats(): Promise<{
     triggers: any
     executions: any
-    queues: any
   }> {
-    const [triggers, executions, queues] = await Promise.all([
+    const [triggers, executions] = await Promise.all([
       this.triggerRepo.getStats(),
       this.executionRepo.getStats(),
-      this.queueService.getQueueStats(),
     ])
-    return { triggers, executions, queues }
+    return { triggers, executions }
   }
 
   @Get('check/:triggerId')
@@ -170,26 +165,17 @@ export class TriggersController {
     }
 
     // Create execution record
+    // Note: We don't sync triggers from chain to DB, so we can't update trigger status here
+    // The on-chain status is the source of truth
     const execution = await this.executionRepo.create({
       triggerId: id,
+      userAddress: body.userAddress,
+      tradeAsset: body.tradeAsset,
       executionPrice: body.executionPrice || 0,
       executedSize: body.executedSize || '0',
       hlOrderId: body.hlOrderId,
       status: 'FILLED',
     })
-
-    // Update trigger status
-    await this.triggerRepo.markExecuted(id)
-
-    // Queue on-chain marking job
-    if (body.hlOrderId) {
-      await this.queueService.addMarkOnchainJob({
-        triggerId: id,
-        executionId: execution.id,
-        executionPrice: body.executionPrice || 0,
-        hlOrderId: body.hlOrderId,
-      })
-    }
 
     return {
       success: true,
@@ -226,41 +212,5 @@ export class TriggersController {
   async getUnmarkedExecutions(): Promise<{ executions: any[] }> {
     const executions = await this.executionRepo.findUnmarkedOnchain()
     return { executions }
-  }
-
-  // ============================================
-  // QUEUE MANAGEMENT (Protected)
-  // ============================================
-
-  @Get('queue/stats')
-  @WorkerOnly()
-  @ApiSecurity('x-api-key')
-  @ApiOperation({ summary: 'Get queue statistics', description: 'Get job queue statistics (Worker only)' })
-  @ApiResponse({ status: 200, description: 'Queue stats', type: QueueStatsDto })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getQueueStats(): Promise<QueueStatsDto> {
-    return this.queueService.getQueueStats()
-  }
-
-  @Post('queue/pause')
-  @WorkerOnly()
-  @ApiSecurity('x-api-key')
-  @ApiOperation({ summary: 'Pause all queues', description: 'Pause processing on all job queues (Worker only)' })
-  @ApiResponse({ status: 200, description: 'Queues paused' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async pauseQueues(): Promise<{ success: boolean }> {
-    await this.queueService.pauseAllQueues()
-    return { success: true }
-  }
-
-  @Post('queue/resume')
-  @WorkerOnly()
-  @ApiSecurity('x-api-key')
-  @ApiOperation({ summary: 'Resume all queues', description: 'Resume processing on all job queues (Worker only)' })
-  @ApiResponse({ status: 200, description: 'Queues resumed' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async resumeQueues(): Promise<{ success: boolean }> {
-    await this.queueService.resumeAllQueues()
-    return { success: true }
   }
 }

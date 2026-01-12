@@ -37,6 +37,9 @@ importers:
       '@hyper-trigger/shared':
         specifier: workspace:^
         version: link:../../packages/shared
+      '@nestjs/bullmq':
+        specifier: ^10.2.0
+        version: 10.2.3(@nestjs/common@10.4.21)(@nestjs/core@10.4.21)(bullmq@5.66.5)
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.21(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -58,6 +61,12 @@ importers:
       '@nktkas/hyperliquid':
         specifier: ^0.30.2
         version: 0.30.2(typescript@5.8.3)
+      '@prisma/client':
+        specifier: ^5.22.0
+        version: 5.22.0(prisma@5.22.0)
+      bullmq:
+        specifier: ^5.30.0
+        version: 5.66.5
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -67,6 +76,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.6.1
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
@@ -116,6 +128,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@20.19.1)
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
       supertest:
         specifier: ^7.2.2
         version: 7.2.2
@@ -1027,7 +1042,7 @@ packages:
       '@babel/traverse': 7.27.4
       '@babel/types': 7.27.6
       convert-source-map: 2.0.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -1299,7 +1314,7 @@ packages:
       '@babel/parser': 7.27.5
       '@babel/template': 7.27.2
       '@babel/types': 7.27.6
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -1323,7 +1338,7 @@ packages:
       idb-keyval: 6.2.1
       ox: 0.6.9(typescript@5.8.3)
       preact: 10.24.2
-      viem: 2.44.1(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.44.1(typescript@5.8.3)
       zustand: 5.0.3(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.4.0)
     transitivePeerDependencies:
       - '@types/react'
@@ -1399,7 +1414,7 @@ packages:
       idb-keyval: 6.2.1
       ox: 0.6.9(typescript@5.8.3)
       preact: 10.24.2
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
       zustand: 5.0.3(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.4.0)
     transitivePeerDependencies:
       - '@types/react'
@@ -2657,7 +2672,7 @@ packages:
     dependencies:
       '@metamask/rpc-errors': 7.0.2
       eventemitter3: 5.0.1
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -2963,6 +2978,10 @@ packages:
 
   /@ioredis/commands@1.2.0:
     resolution: {integrity: sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==}
+    dev: false
+
+  /@ioredis/commands@1.5.0:
+    resolution: {integrity: sha512-eUgLqrMf8nJkZxT24JvVRrQya1vZkQh8BBeYNwGDqa5I0VUi8ACx7uFvAaLxintokpTenkK6DASvo/bvNbBGow==}
     dev: false
 
   /@isaacs/balanced-match@4.0.1:
@@ -3606,6 +3625,31 @@ packages:
       '@tybys/wasm-util': 0.9.0
     dev: true
     optional: true
+
+  /@nestjs/bull-shared@10.2.3(@nestjs/common@10.4.21)(@nestjs/core@10.4.21):
+    resolution: {integrity: sha512-XcgAjNOgq6b5DVCytxhR5BKiwWo7hsusVeyE7sfFnlXRHeEtIuC2hYWBr/ZAtvL/RH0/O0tqtq0rVl972nbhJw==}
+    peerDependencies:
+      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
+      '@nestjs/core': ^8.0.0 || ^9.0.0 || ^10.0.0
+    dependencies:
+      '@nestjs/common': 10.4.21(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 10.4.21(@nestjs/common@10.4.21)(@nestjs/platform-express@10.4.21)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      tslib: 2.8.1
+    dev: false
+
+  /@nestjs/bullmq@10.2.3(@nestjs/common@10.4.21)(@nestjs/core@10.4.21)(bullmq@5.66.5):
+    resolution: {integrity: sha512-Lo4W5kWD61/246Y6H70RNgV73ybfRbZyKKS4CBRDaMELpxgt89O+EgYZUB4pdoNrWH16rKcaT0AoVsB/iDztKg==}
+    peerDependencies:
+      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
+      '@nestjs/core': ^8.0.0 || ^9.0.0 || ^10.0.0
+      bullmq: ^3.0.0 || ^4.0.0 || ^5.0.0
+    dependencies:
+      '@nestjs/bull-shared': 10.2.3(@nestjs/common@10.4.21)(@nestjs/core@10.4.21)
+      '@nestjs/common': 10.4.21(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 10.4.21(@nestjs/common@10.4.21)(@nestjs/platform-express@10.4.21)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      bullmq: 5.66.5
+      tslib: 2.8.1
+    dev: false
 
   /@nestjs/cli@10.4.9:
     resolution: {integrity: sha512-s8qYd97bggqeK7Op3iD49X2MpFtW4LVNLAwXFkfbRxKME6IYT7X0muNTJ2+QfI8hpbNx9isWkrLWIp+g5FOhiA==}
@@ -4508,6 +4552,46 @@ packages:
     deprecated: 'The package is now available as "qr": npm install qr'
     dev: false
 
+  /@prisma/client@5.22.0(prisma@5.22.0):
+    resolution: {integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==}
+    engines: {node: '>=16.13'}
+    requiresBuild: true
+    peerDependencies:
+      prisma: '*'
+    peerDependenciesMeta:
+      prisma:
+        optional: true
+    dependencies:
+      prisma: 5.22.0
+    dev: false
+
+  /@prisma/debug@5.22.0:
+    resolution: {integrity: sha512-AUt44v3YJeggO2ZU5BkXI7M4hu9BF2zzH2iF2V5pyXT/lRTyWiElZ7It+bRH1EshoMRxHgpYg4VB6rCM+mG5jQ==}
+
+  /@prisma/engines-version@5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2:
+    resolution: {integrity: sha512-2PTmxFR2yHW/eB3uqWtcgRcgAbG1rwG9ZriSvQw+nnb7c4uCr3RAcGMb6/zfE88SKlC1Nj2ziUvc96Z379mHgQ==}
+
+  /@prisma/engines@5.22.0:
+    resolution: {integrity: sha512-UNjfslWhAt06kVL3CjkuYpHAWSO6L4kDCVPegV6itt7nD1kSJavd3vhgAEhjglLJJKEdJ7oIqDJ+yHk6qO8gPA==}
+    requiresBuild: true
+    dependencies:
+      '@prisma/debug': 5.22.0
+      '@prisma/engines-version': 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      '@prisma/fetch-engine': 5.22.0
+      '@prisma/get-platform': 5.22.0
+
+  /@prisma/fetch-engine@5.22.0:
+    resolution: {integrity: sha512-bkrD/Mc2fSvkQBV5EpoFcZ87AvOgDxbG99488a5cexp5Ccny+UM6MAe/UFkUC0wLYD9+9befNOqGiIJhhq+HbA==}
+    dependencies:
+      '@prisma/debug': 5.22.0
+      '@prisma/engines-version': 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      '@prisma/get-platform': 5.22.0
+
+  /@prisma/get-platform@5.22.0:
+    resolution: {integrity: sha512-pHhpQdr1UPFpt+zFfnPazhulaZYCUqeIcPpJViYoq9R+D/yw4fjE+CtnsnKzPYm0ddUbeXUzjGVGIRVgPDCk4Q==}
+    dependencies:
+      '@prisma/debug': 5.22.0
+
   /@radix-ui/number@1.1.1:
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
     dev: false
@@ -5078,7 +5162,7 @@ packages:
       react-dom: 19.2.3(react@19.2.3)
       react-remove-scroll: 2.6.2(@types/react@19.2.8)(react@19.2.3)
       ua-parser-js: 1.0.40
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
       wagmi: 2.19.5(@tanstack/react-query@5.81.2)(@types/react@19.2.8)(react@19.2.3)(typescript@5.8.3)(viem@2.31.4)
     transitivePeerDependencies:
       - '@types/react'
@@ -5091,7 +5175,7 @@ packages:
     dependencies:
       big.js: 6.2.2
       dayjs: 1.11.13
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -5119,7 +5203,7 @@ packages:
       '@reown/appkit-wallet': 1.7.8(typescript@5.8.3)
       '@walletconnect/universal-provider': 2.21.0(typescript@5.8.3)
       valtio: 1.13.2(@types/react@19.2.8)(react@19.2.3)
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -5281,7 +5365,7 @@ packages:
       '@walletconnect/logger': 2.1.2
       '@walletconnect/universal-provider': 2.21.0(typescript@5.8.3)
       valtio: 1.13.2(@types/react@19.2.8)(react@19.2.3)
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -5339,7 +5423,7 @@ packages:
       '@walletconnect/universal-provider': 2.21.0(typescript@5.8.3)
       bs58: 6.0.0
       valtio: 1.13.2(@types/react@19.2.8)(react@19.2.3)
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -5593,7 +5677,7 @@ packages:
     resolution: {integrity: sha512-N5p/ulfnnA2Pi2M3YeWjULeWbjo7ei22JwU/IXnhoHzKq3pYCN6ynL9mJBOlvDVv892EgLPCWCOwQk/uBT2v0Q==}
     dependencies:
       '@safe-global/safe-gateway-typescript-sdk': 3.23.1
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -8121,7 +8205,7 @@ packages:
       cbw-sdk: /@coinbase/wallet-sdk@3.9.3
       porto: 0.2.35(@tanstack/react-query@5.81.2)(@types/react@19.2.8)(@wagmi/core@2.22.1)(react@19.2.3)(typescript@5.8.3)(use-sync-external-store@1.4.0)(viem@2.31.4)(wagmi@2.19.5)
       typescript: 5.8.3
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -8176,7 +8260,7 @@ packages:
       eventemitter3: 5.0.1
       mipd: 0.0.7(typescript@5.8.3)
       typescript: 5.8.3
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
       zustand: 5.0.0(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.4.0)
     transitivePeerDependencies:
       - '@types/react'
@@ -9027,7 +9111,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -9786,6 +9870,20 @@ packages:
       semver: 7.7.2
       tslib: 2.8.1
       uuid: 9.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /bullmq@5.66.5:
+    resolution: {integrity: sha512-DC1E7P03L+TfNHv+2SGxwNYvtb0oJPODWSKkWdfis0heU5zFW16vjM7fCjwlxMdGWw2w28EI3mTRfYLEHeQQSw==}
+    dependencies:
+      cron-parser: 4.9.0
+      ioredis: 5.9.1
+      msgpackr: 1.11.5
+      node-abort-controller: 3.1.1
+      semver: 7.7.3
+      tslib: 2.8.1
+      uuid: 11.1.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -10669,13 +10767,6 @@ packages:
   /detect-browser@5.3.0:
     resolution: {integrity: sha512-53rsFbGdwMwlF7qvCt0ypLM5V5/Mbl0szB7GPN8y9NCcbknYOeVVXdrXEq+90IwAfrrzt6Hd+u2E2ntakICU8w==}
     dev: false
-
-  /detect-libc@2.0.4:
-    resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
-    engines: {node: '>=8'}
-    requiresBuild: true
-    dev: false
-    optional: true
 
   /detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -12124,7 +12215,7 @@ packages:
       minimatch: 3.1.2
       node-abort-controller: 3.1.1
       schema-utils: 3.3.0
-      semver: 7.7.2
+      semver: 7.7.3
       tapable: 2.3.0
       typescript: 5.7.2
       webpack: 5.97.1
@@ -12740,7 +12831,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -12904,7 +12995,24 @@ packages:
     dependencies:
       '@ioredis/commands': 1.2.0
       cluster-key-slot: 1.1.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
+      denque: 2.1.0
+      lodash.defaults: 4.2.0
+      lodash.isarguments: 3.1.0
+      redis-errors: 1.2.0
+      redis-parser: 3.0.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /ioredis@5.9.1:
+    resolution: {integrity: sha512-BXNqFQ66oOsR82g9ajFFsR8ZKrjVvYCLyeML9IvSMAsP56XH2VXBdZjmI11p65nXXJxTEt1hie3J2QeFJVgrtQ==}
+    engines: {node: '>=12.22.0'}
+    dependencies:
+      '@ioredis/commands': 1.5.0
+      cluster-key-slot: 1.1.2
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0
@@ -13274,7 +13382,7 @@ packages:
     resolution: {integrity: sha512-n3s8EwkdFIJCG3BPKBYvskgXGoy88ARzvegkitk60NxRdwltLOTaH7CUiMRXvwYorl0Q712iEjcWB+fK/MrWVw==}
     engines: {node: '>=10'}
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -14541,6 +14649,12 @@ packages:
       msgpackr-extract: 3.0.3
     dev: false
 
+  /msgpackr@1.11.5:
+    resolution: {integrity: sha512-UjkUHN0yqp9RWKy0Lplhh+wlpdt9oQBYgULZOiFhV3VclSF1JnSQWZ5r9gORQlNYaUKQoR8itv7g7z1xDDuACA==}
+    optionalDependencies:
+      msgpackr-extract: 3.0.3
+    dev: false
+
   /multer@2.0.2:
     resolution: {integrity: sha512-u7f2xaZ/UG8oLXHvtF/oWTRvT44p9ecwBBqTwgJVq0+4BW1g8OW01TyMEGWBHbyMOYVHXslaut7qEQ1meATXgw==}
     engines: {node: '>= 10.16.0'}
@@ -14713,7 +14827,7 @@ packages:
     hasBin: true
     requiresBuild: true
     dependencies:
-      detect-libc: 2.0.4
+      detect-libc: 2.1.2
     dev: false
     optional: true
 
@@ -15042,6 +15156,27 @@ packages:
       object-keys: 1.1.1
       safe-push-apply: 1.0.0
     dev: true
+
+  /ox@0.11.3(typescript@5.8.3):
+    resolution: {integrity: sha512-1bWYGk/xZel3xro3l8WGg6eq4YEKlaqvyMtVhfMFpbJzK2F6rj4EDRtqDCWVEJMkzcmEi9uW2QxsqELokOlarw==}
+    peerDependencies:
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.0
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.8.3)(zod@4.3.5)
+      eventemitter3: 5.0.1
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - zod
+    dev: false
 
   /ox@0.11.3(typescript@5.8.3)(zod@3.25.67):
     resolution: {integrity: sha512-1bWYGk/xZel3xro3l8WGg6eq4YEKlaqvyMtVhfMFpbJzK2F6rj4EDRtqDCWVEJMkzcmEi9uW2QxsqELokOlarw==}
@@ -15432,7 +15567,7 @@ packages:
       ox: 0.9.17(typescript@5.8.3)(zod@4.3.5)
       react: 19.2.3
       typescript: 5.8.3
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
       wagmi: 2.19.5(@tanstack/react-query@5.81.2)(@types/react@19.2.8)(react@19.2.3)(typescript@5.8.3)(viem@2.31.4)
       zod: 4.3.5
       zustand: 5.0.9(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.4.0)
@@ -15642,6 +15777,16 @@ packages:
       ansi-styles: 5.2.0
       react-is: 18.3.1
     dev: true
+
+  /prisma@5.22.0:
+    resolution: {integrity: sha512-vtpjW3XuYCSnMsNVBjLMNkTj6OZbudcPPTPYHqX0CJfpcdWciI1dM8uHETwmDxxiqEwCIE6WvXucWUetJgfu/A==}
+    engines: {node: '>=16.13'}
+    hasBin: true
+    requiresBuild: true
+    dependencies:
+      '@prisma/engines': 5.22.0
+    optionalDependencies:
+      fsevents: 2.3.3
 
   /process-nextick-args@2.0.1:
     resolution: {integrity: sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==}
@@ -18025,6 +18170,11 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
+  /uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
+    dev: false
+
   /uuid@13.0.0:
     resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
     hasBin: true
@@ -18111,6 +18261,29 @@ packages:
       - zod
     dev: false
 
+  /viem@2.31.4(typescript@5.8.3):
+    resolution: {integrity: sha512-0UZ/asvzl6p44CIBRDbwEcn3HXIQQurBZcMo5qmLhQ8s27Ockk+RYohgTLlpLvkYs8/t4UUEREAbHLuek1kXcw==}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+    dependencies:
+      '@noble/curves': 1.9.2
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.0.8(typescript@5.8.3)(zod@3.25.67)
+      isows: 1.0.7(ws@8.18.2)
+      ox: 0.8.1(typescript@5.8.3)(zod@3.25.67)
+      typescript: 5.8.3
+      ws: 8.18.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+    dev: false
+
   /viem@2.31.4(typescript@5.8.3)(zod@3.22.4):
     resolution: {integrity: sha512-0UZ/asvzl6p44CIBRDbwEcn3HXIQQurBZcMo5qmLhQ8s27Ockk+RYohgTLlpLvkYs8/t4UUEREAbHLuek1kXcw==}
     peerDependencies:
@@ -18157,6 +18330,29 @@ packages:
       - zod
     dev: false
 
+  /viem@2.44.1(typescript@5.8.3):
+    resolution: {integrity: sha512-wfQda7PIJeF9hWiGKV628AfBwyYxyoc89OcgF4s4/chs2PY8ibUA7IG+DWdU4oAkjhHm9w47w1m2dwwOPBU+ng==}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.8.3)(zod@4.3.5)
+      isows: 1.0.7(ws@8.18.3)
+      ox: 0.11.3(typescript@5.8.3)
+      typescript: 5.8.3
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+    dev: false
+
   /viem@2.44.1(typescript@5.8.3)(zod@3.25.67):
     resolution: {integrity: sha512-wfQda7PIJeF9hWiGKV628AfBwyYxyoc89OcgF4s4/chs2PY8ibUA7IG+DWdU4oAkjhHm9w47w1m2dwwOPBU+ng==}
     peerDependencies:
@@ -18197,7 +18393,7 @@ packages:
       react: 19.2.3
       typescript: 5.8.3
       use-sync-external-store: 1.4.0(react@19.2.3)
-      viem: 2.31.4(typescript@5.8.3)(zod@3.25.67)
+      viem: 2.31.4(typescript@5.8.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
