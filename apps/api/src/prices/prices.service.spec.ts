@@ -8,11 +8,18 @@ describe('PricesService', () => {
 
   const mockHyperliquidService = {
     getOraclePrice: jest.fn(),
+    getAllMids: jest.fn().mockResolvedValue({
+      '@107': '25.50',
+      '@1': '25.50',
+    }),
     isHealthy: jest.fn().mockReturnValue(true),
   }
 
   const mockConfigService = {
-    get: jest.fn().mockReturnValue('https://rpc.hyperliquid-testnet.xyz/evm'),
+    get: jest.fn().mockImplementation((key: string) => {
+      if (key === 'NETWORK') return 'mainnet'
+      return 'https://rpc.hyperliquid.xyz/evm'
+    }),
   }
 
   beforeEach(async () => {
@@ -43,31 +50,25 @@ describe('PricesService', () => {
 
   describe('getAllPrices', () => {
     it('should return prices for all tokens', async () => {
-      // Mock oracle prices
-      mockHyperliquidService.getOraclePrice
-        .mockResolvedValueOnce(1.0)    // USDC
-        .mockResolvedValueOnce(25.50)  // HYPE
-        .mockResolvedValueOnce(104500) // UBTC
-        .mockResolvedValueOnce(2500)   // UETH
-        .mockResolvedValueOnce(145)    // USOL
+      mockHyperliquidService.getAllMids.mockResolvedValue({
+        '@107': '25.50',
+      })
 
       const prices = await service.getAllPrices()
 
       expect(prices).toHaveProperty('USDC')
       expect(prices).toHaveProperty('HYPE')
-      expect(prices).toHaveProperty('UBTC')
-      expect(prices).toHaveProperty('UETH')
-      expect(prices).toHaveProperty('USOL')
 
       expect(prices.USDC.price).toBe(1.0)
       expect(prices.HYPE.price).toBe(25.50)
-      expect(prices.UBTC.price).toBe(104500)
 
-      expect(mockHyperliquidService.getOraclePrice).toHaveBeenCalledTimes(5)
+      expect(mockHyperliquidService.getAllMids).toHaveBeenCalled()
     })
 
     it('should include required fields in price data', async () => {
-      mockHyperliquidService.getOraclePrice.mockResolvedValue(100)
+      mockHyperliquidService.getAllMids.mockResolvedValue({
+        '@107': '100',
+      })
 
       const prices = await service.getAllPrices()
       const priceData = prices.HYPE
@@ -81,24 +82,28 @@ describe('PricesService', () => {
 
   describe('getPrice', () => {
     it('should return price for valid token symbol', async () => {
-      mockHyperliquidService.getOraclePrice.mockResolvedValue(104500)
+      mockHyperliquidService.getAllMids.mockResolvedValue({
+        '@107': '25.50',
+      })
 
-      const price = await service.getPrice('UBTC')
+      const price = await service.getPrice('HYPE')
 
       expect(price).not.toBeNull()
-      expect(price?.symbol).toBe('UBTC')
-      expect(price?.price).toBe(104500)
+      expect(price?.symbol).toBe('HYPE')
+      expect(price?.price).toBe(25.50)
     })
 
     it('should return null for invalid token symbol', async () => {
       const price = await service.getPrice('INVALID')
 
       expect(price).toBeNull()
-      expect(mockHyperliquidService.getOraclePrice).not.toHaveBeenCalled()
+      expect(mockHyperliquidService.getAllMids).not.toHaveBeenCalled()
     })
 
     it('should be case insensitive', async () => {
-      mockHyperliquidService.getOraclePrice.mockResolvedValue(25.50)
+      mockHyperliquidService.getAllMids.mockResolvedValue({
+        '@107': '25.50',
+      })
 
       const price = await service.getPrice('hype')
 

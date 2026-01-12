@@ -69,13 +69,17 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@hyper-trigger)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@nktkas/hyperliquid$": "<rootDir>/../__mocks__/@nktkas/hyperliquid.ts"
+      "^@nktkas/hyperliquid$": "<rootDir>/../__mocks__/@nktkas/hyperliquid.ts",
+      "^@hyper-trigger/shared$": "<rootDir>/../__mocks__/@hyper-trigger/shared.ts"
     }
   }
 }
