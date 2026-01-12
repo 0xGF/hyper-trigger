@@ -1,12 +1,12 @@
 FROM node:20-alpine AS base
 
-# Cache bust: 2026-01-12-v2
+# Cache bust: 2026-01-12-v3
 ARG CACHEBUST=1
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@8.10.0 --activate
 
-# Builder stage
+# Single stage build (simpler, works with pnpm workspaces)
 FROM base AS builder
 WORKDIR /app
 
@@ -17,49 +17,25 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
 
-# Install all dependencies (including dev deps for prisma)
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Generate Prisma client (in builder where prisma CLI is available)
+# Generate Prisma client
 WORKDIR /app/apps/api
 RUN pnpm exec prisma generate
 
-# Build shared and api
+# Build
 WORKDIR /app
 RUN pnpm turbo run build --filter=@hyper-trigger/api
 
-# Production stage
-FROM base AS runner
-WORKDIR /app
+# Set working directory for runtime
+WORKDIR /app/apps/api
 
 ENV NODE_ENV=production
-
-# Copy workspace files
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/pnpm-workspace.yaml ./
-
-# Copy shared package
-COPY --from=builder /app/packages/shared/package.json ./packages/shared/
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-
-# Copy api package
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-
-# Copy generated Prisma client from builder
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# Install production dependencies only
-RUN pnpm install --prod --frozen-lockfile
-
-WORKDIR /app/apps/api
 
 EXPOSE 4000
 
