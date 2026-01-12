@@ -1,5 +1,3 @@
-import { Activity } from 'lucide-react'
-
 interface LoadingProps {
   message?: string
   size?: 'sm' | 'md' | 'lg'
@@ -15,8 +13,8 @@ export function Loading({ message = "Loading...", size = 'md' }: LoadingProps) {
   return (
     <div className="flex items-center justify-center py-12">
       <div className="text-center">
-        <div className={`animate-spin rounded-full border-2 border-white/20 border-t-green-400 mx-auto mb-4 ${sizeClasses[size]}`}></div>
-        <p className="text-gray-400 text-sm font-mono">{message}</p>
+        <div className={`animate-spin rounded-full border-2 border-muted border-t-primary mx-auto mb-4 ${sizeClasses[size]}`}></div>
+        <p className="text-muted-foreground text-sm">{message}</p>
       </div>
     </div>
   )
@@ -30,6 +28,6 @@ export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   }
 
   return (
-    <div className={`animate-spin rounded-full border-white/20 border-t-green-400 ${sizeClasses[size]}`}></div>
+    <div className={`animate-spin rounded-full border-muted border-t-primary ${sizeClasses[size]}`}></div>
   )
-} 
+}

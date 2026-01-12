@@ -2,6 +2,7 @@
   "name": "@hyper-trigger/shared",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -10,16 +11,22 @@
       "default": "./dist/index.js"
     },
     "./tokens": {
-      "types": "./dist/tokens.d.ts", 
+      "types": "./dist/tokens.d.ts",
       "default": "./dist/tokens.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts --fix",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^25.0.6",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
     "typescript": "^5.3.3"
   }
-} 
+}

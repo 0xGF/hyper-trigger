@@ -1,154 +1,387 @@
 'use client'
 
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount, useSwitchChain } from 'wagmi'
 import { parseEther, parseUnits } from 'viem'
-import { CONTRACTS, TRIGGER_MANAGER_ABI } from '@/components/triggers/constants'
-import { getAssetIndexMap } from '@hyper-trigger/shared/tokens'
 
-// Use shared asset index mapping for consistency
-const ASSET_INDEX_MAP = getAssetIndexMap()
+// Network configuration
+const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK === 'testnet'
+const EXPECTED_CHAIN_ID = IS_TESTNET ? 998 : 999
 
-// Helper function to get asset index for a token symbol
-const getAssetIndex = (tokenSymbol: string): number => {
-  const index = ASSET_INDEX_MAP[tokenSymbol]
-  if (index === undefined) {
-    console.warn(`⚠️ No asset index found for ${tokenSymbol}, using 0 as fallback`)
-    return 0 // Fallback to SOL index
-  }
-  return index
+// Contract address - matches deployed TriggerContract
+const TRIGGER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS as `0x${string}` || '0x9029f0676F1Df986DC4bB3aca37158186ad8e570'
+
+// ABI matching TriggerContract.sol
+const TRIGGER_ABI = [
+  {
+    type: 'function',
+    name: 'createTrigger',
+    inputs: [
+      { name: 'watchAsset', type: 'string' },
+      { name: 'targetPrice', type: 'uint256' },
+      { name: 'isAbove', type: 'bool' },
+      { name: 'tradeAsset', type: 'string' },
+      { name: 'isBuy', type: 'bool' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'maxSlippage', type: 'uint256' },
+      { name: 'durationHours', type: 'uint256' },
+    ],
+    outputs: [{ name: 'triggerId', type: 'uint256' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'cancelTrigger',
+    inputs: [{ name: 'triggerId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'updateTriggerPrice',
+    inputs: [
+      { name: 'oldTriggerId', type: 'uint256' },
+      { name: 'newTargetPrice', type: 'uint256' },
+      { name: 'newIsAbove', type: 'bool' },
+    ],
+    outputs: [{ name: 'newTriggerId', type: 'uint256' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'getTrigger',
+    inputs: [{ name: 'triggerId', type: 'uint256' }],
+    outputs: [
+      {
+        type: 'tuple',
+        name: '',
+        components: [
+          { name: 'id', type: 'uint256' },
+          { name: 'user', type: 'address' },
+          { name: 'watchAsset', type: 'string' },
+          { name: 'targetPrice', type: 'uint256' },
+          { name: 'isAbove', type: 'bool' },
+          { name: 'tradeAsset', type: 'string' },
+          { name: 'isBuy', type: 'bool' },
+          { name: 'amount', type: 'uint256' },
+          { name: 'maxSlippage', type: 'uint256' },
+          { name: 'createdAt', type: 'uint256' },
+          { name: 'expiresAt', type: 'uint256' },
+          { name: 'status', type: 'uint8' },
+          { name: 'executedAt', type: 'uint256' },
+          { name: 'executionPrice', type: 'uint256' },
+          { name: 'executionTxHash', type: 'bytes32' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getUserTriggers',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getUserActiveTriggers',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [
+      {
+        type: 'tuple[]',
+        name: '',
+        components: [
+          { name: 'id', type: 'uint256' },
+          { name: 'user', type: 'address' },
+          { name: 'watchAsset', type: 'string' },
+          { name: 'targetPrice', type: 'uint256' },
+          { name: 'isAbove', type: 'bool' },
+          { name: 'tradeAsset', type: 'string' },
+          { name: 'isBuy', type: 'bool' },
+          { name: 'amount', type: 'uint256' },
+          { name: 'maxSlippage', type: 'uint256' },
+          { name: 'createdAt', type: 'uint256' },
+          { name: 'expiresAt', type: 'uint256' },
+          { name: 'status', type: 'uint8' },
+          { name: 'executedAt', type: 'uint256' },
+          { name: 'executionPrice', type: 'uint256' },
+          { name: 'executionTxHash', type: 'bytes32' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'triggerFee',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'nextTriggerId',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'checkTrigger',
+    inputs: [
+      { name: 'triggerId', type: 'uint256' },
+      { name: 'currentPrice', type: 'uint256' },
+    ],
+    outputs: [
+      { name: 'shouldExecute', type: 'bool' },
+      { name: 'reason', type: 'string' },
+    ],
+    stateMutability: 'view',
+  },
+] as const
+
+// Trigger status enum
+export enum TriggerStatus {
+  Active = 0,
+  Executed = 1,
+  Cancelled = 2,
+  Expired = 3,
+  Failed = 4,
 }
 
-// Helper to get token ID for bridging
-const getTokenId = (tokenSymbol: string): number => {
-  // Token ID mapping based on our shared constants
-  const TOKEN_ID_MAP: Record<string, number> = {
-    'HYPE': 0,
-    'USDC': 1,
-    'BTC': 142,
-    'ETH': 156,
-    'SOL': 0,
-  }
-  return TOKEN_ID_MAP[tokenSymbol] || 1 // Default to USDC
+// Trigger structure
+export interface Trigger {
+  id: bigint
+  user: string
+  watchAsset: string
+  targetPrice: bigint
+  isAbove: boolean
+  tradeAsset: string
+  isBuy: boolean
+  amount: bigint
+  maxSlippage: bigint
+  createdAt: bigint
+  expiresAt: bigint
+  status: number
+  executedAt: bigint
+  executionPrice: bigint
+  executionTxHash: string
 }
 
 export interface CreateTriggerParams {
-  targetToken: string      // Target token to buy (BTC, ETH, etc.)
-  triggerToken: string     // Token to monitor for price (usually same as target)
-  usdcAmount: string       // Amount of USDC to swap
-  triggerPrice: number     // Target price with decimals
-  isAbove: boolean         // true = trigger when price >= target
-  slippagePercent: number  // 0-100
+  watchAsset: string      // Asset to monitor (e.g., "BTC")
+  targetPrice: number     // Price level in USD
+  isAbove: boolean        // true = trigger when >= price
+  tradeAsset: string      // Asset to trade (e.g., "HYPE")
+  isBuy: boolean          // true = buy with USDC, false = sell for USDC
+  amount: string          // Amount to trade (USDC for buy, token amount for sell)
+  slippagePercent: number // Slippage tolerance (e.g., 1 for 1%)
+  durationHours: number   // How long trigger is valid
 }
 
 export function useTriggerContract() {
+  const { address, isConnected, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
+  
+  const isWrongChain = chainId !== EXPECTED_CHAIN_ID
+  
   const {
     writeContract,
     data: hash,
     isPending: isWritePending,
-    error: writeError
+    error: writeError,
+    reset: resetWrite,
   } = useWriteContract()
 
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
-    error: confirmError
+    error: confirmError,
   } = useWaitForTransactionReceipt({
     hash,
   })
 
-  const createTrigger = async (params: CreateTriggerParams) => {
-    try {
-      // Get the oracle index for the trigger token
-      const targetOracleIndex = getAssetIndex(params.triggerToken)
-      const targetTokenId = getTokenId(params.targetToken)
-      
-      console.log(`🎯 Creating USDC → ${params.targetToken} trigger`)
-      console.log(`📊 Oracle index: ${targetOracleIndex} for ${params.triggerToken}`)
-      console.log(`🪙 Target token ID: ${targetTokenId}`)
-      
-      // Convert USDC amount (6 decimals)
-      const usdcAmountWei = parseUnits(params.usdcAmount, 6)
-      
-      // Convert price to wei (18 decimals for precision)
-      const triggerPriceWei = parseEther(params.triggerPrice.toString())
-
-      // Convert slippage percentage to basis points (multiply by 100)
-      const slippageBasisPoints = Math.round(params.slippagePercent * 100)
-
-      // Execution reward (0.01 HYPE)
-      const executionRewardWei = parseEther('0.01')
-
-      console.log(`💰 USDC amount: ${params.usdcAmount} (${usdcAmountWei.toString()} wei)`)
-      console.log(`🎯 Trigger price: $${params.triggerPrice} (${triggerPriceWei.toString()} wei)`)
-      console.log(`📈 Condition: Price ${params.isAbove ? '>=' : '<='} $${params.triggerPrice}`)
-      console.log(`💸 Execution reward: 0.01 HYPE`)
-
-      // Call the new TriggerContract
-      writeContract({
-        address: CONTRACTS.TRIGGER_CONTRACT.ADDRESS as `0x${string}`,
-        abi: TRIGGER_MANAGER_ABI,
-        functionName: 'createTrigger',
-        args: [
-          targetOracleIndex,    // Oracle index for price monitoring
-          BigInt(targetTokenId), // Target token ID to buy
-          usdcAmountWei,        // Amount of USDC to swap
-          triggerPriceWei,      // Trigger price (18 decimals)
-          params.isAbove,       // Trigger condition
-          BigInt(slippageBasisPoints) // Max slippage in basis points
-        ],
-        value: executionRewardWei // Send execution reward in HYPE
-      })
-    } catch (error) {
-      console.error('❌ Error creating trigger:', error)
-      throw error
+  // Get trigger fee
+  const { data: triggerFee } = useReadContract({
+    address: TRIGGER_CONTRACT_ADDRESS,
+    abi: TRIGGER_ABI,
+    functionName: 'triggerFee',
+    chainId: EXPECTED_CHAIN_ID,
+  })
+  
+  // Ensure correct chain before transactions
+  const ensureCorrectChain = async () => {
+    if (isWrongChain && switchChain) {
+      try {
+        await switchChain({ chainId: EXPECTED_CHAIN_ID })
+      } catch {
+        throw new Error(`Please switch to HyperEVM ${IS_TESTNET ? 'Testnet' : 'Mainnet'}`)
+      }
     }
   }
 
-  // Hook to read execution reward
-  const { data: executionReward } = useReadContract({
-    address: CONTRACTS.TRIGGER_CONTRACT.ADDRESS as `0x${string}`,
-    abi: TRIGGER_MANAGER_ABI,
-    functionName: 'executionReward',
-  })
+  // Create a new trigger - returns promise that resolves with tx hash
+  const createTrigger = async (params: CreateTriggerParams): Promise<`0x${string}` | undefined> => {
+    if (!isConnected || !address) {
+      throw new Error('Wallet not connected')
+    }
 
-  // Hook to read USDC token ID
-  const { data: usdcTokenId } = useReadContract({
-    address: CONTRACTS.TRIGGER_CONTRACT.ADDRESS as `0x${string}`,
-    abi: TRIGGER_MANAGER_ABI,
-    functionName: 'USDC_TOKEN_ID',
-  })
+    // Ensure correct chain
+    await ensureCorrectChain()
 
-  // Hook to get trigger details
-  const getTrigger = (triggerId: number) => {
-    return useReadContract({
-      address: CONTRACTS.TRIGGER_CONTRACT.ADDRESS as `0x${string}`,
-      abi: TRIGGER_MANAGER_ABI,
-      functionName: 'getTrigger',
-      args: [BigInt(triggerId)],
+    // Convert price to 6 decimals (Hyperliquid format)
+    const targetPriceWei = parseUnits(params.targetPrice.toString(), 6)
+    
+    // Convert amount based on trade direction
+    // For buys: amount is USDC (6 decimals)
+    // For sells: amount is token amount (18 decimals typically)
+    const amountDecimals = params.isBuy ? 6 : 18
+    const amountWei = parseUnits(params.amount, amountDecimals)
+    
+    // Convert slippage to basis points (1% = 100)
+    const maxSlippageBps = BigInt(Math.round(params.slippagePercent * 100))
+    
+    // Get fee (default to 0.001 HYPE if not fetched)
+    const fee = triggerFee || parseEther('0.001')
+
+    return new Promise((resolve, reject) => {
+      writeContract({
+        address: TRIGGER_CONTRACT_ADDRESS,
+        abi: TRIGGER_ABI,
+        functionName: 'createTrigger',
+        args: [
+          params.watchAsset,
+          targetPriceWei,
+          params.isAbove,
+          params.tradeAsset,
+          params.isBuy,
+          amountWei,
+          maxSlippageBps,
+          BigInt(params.durationHours),
+        ],
+        value: fee,
+        chainId: EXPECTED_CHAIN_ID,
+      }, {
+        onSuccess: (hash) => resolve(hash),
+        onError: (error) => reject(error),
+      })
     })
   }
 
-  // Hook to get user's triggers
-  const getUserTriggers = (userAddress: string) => {
-    return useReadContract({
-      address: CONTRACTS.TRIGGER_CONTRACT.ADDRESS as `0x${string}`,
-      abi: TRIGGER_MANAGER_ABI,
-      functionName: 'getUserTriggers',
-      args: [userAddress as `0x${string}`],
+  // Cancel a trigger - returns promise that resolves with tx hash
+  const cancelTrigger = async (triggerId: number): Promise<`0x${string}` | undefined> => {
+    if (!isConnected || !address) {
+      throw new Error('Wallet not connected')
+    }
+
+    // Ensure correct chain
+    await ensureCorrectChain()
+
+    return new Promise((resolve, reject) => {
+      writeContract({
+        address: TRIGGER_CONTRACT_ADDRESS,
+        abi: TRIGGER_ABI,
+        functionName: 'cancelTrigger',
+        args: [BigInt(triggerId)],
+        chainId: EXPECTED_CHAIN_ID,
+      }, {
+        onSuccess: (hash) => resolve(hash),
+        onError: (error) => reject(error),
+      })
+    })
+  }
+
+  // Update trigger price in a single transaction
+  const updateTriggerPrice = async (
+    oldTriggerId: number,
+    newTargetPrice: number,
+    newIsAbove: boolean
+  ): Promise<`0x${string}` | undefined> => {
+    if (!isConnected || !address) {
+      throw new Error('Wallet not connected')
+    }
+
+    // Ensure correct chain
+    await ensureCorrectChain()
+
+    // Convert price to 6 decimals
+    const newTargetPriceWei = parseUnits(newTargetPrice.toString(), 6)
+
+    return new Promise((resolve, reject) => {
+      writeContract({
+        address: TRIGGER_CONTRACT_ADDRESS,
+        abi: TRIGGER_ABI,
+        functionName: 'updateTriggerPrice',
+        args: [BigInt(oldTriggerId), newTargetPriceWei, newIsAbove],
+        value: BigInt(0), // No additional fee needed - uses refunded fee
+        chainId: EXPECTED_CHAIN_ID,
+      }, {
+        onSuccess: (hash) => resolve(hash),
+        onError: (error) => reject(error),
+      })
     })
   }
 
   return {
     createTrigger,
-    getTrigger,
-    getUserTriggers,
-    executionReward,
-    usdcTokenId,
+    cancelTrigger,
+    updateTriggerPrice,
+    reset: resetWrite,
+    triggerFee,
     hash,
     isWritePending,
     isConfirming,
     isConfirmed,
+    isWrongChain,
     error: writeError || confirmError,
-    contractAddress: CONTRACTS.TRIGGER_CONTRACT.ADDRESS
+    contractAddress: TRIGGER_CONTRACT_ADDRESS,
   }
-} 
+}
+
+// Hook to get a specific trigger
+export function useTrigger(triggerId: number) {
+  return useReadContract({
+    address: TRIGGER_CONTRACT_ADDRESS,
+    abi: TRIGGER_ABI,
+    functionName: 'getTrigger',
+    args: [BigInt(triggerId)],
+    chainId: EXPECTED_CHAIN_ID,
+    query: {
+      enabled: triggerId > 0,
+    },
+  })
+}
+
+// Hook to get user's trigger IDs
+export function useUserTriggerIds() {
+  const { address } = useAccount()
+  
+  return useReadContract({
+    address: TRIGGER_CONTRACT_ADDRESS,
+    abi: TRIGGER_ABI,
+    functionName: 'getUserTriggers',
+    args: address ? [address] : undefined,
+    chainId: EXPECTED_CHAIN_ID,
+    query: {
+      enabled: !!address,
+    },
+  })
+}
+
+// Hook to get user's active triggers
+export function useUserActiveTriggers() {
+  const { address } = useAccount()
+  
+  return useReadContract({
+    address: TRIGGER_CONTRACT_ADDRESS,
+    abi: TRIGGER_ABI,
+    functionName: 'getUserActiveTriggers',
+    args: address ? [address] : undefined,
+    chainId: EXPECTED_CHAIN_ID,
+    query: {
+      enabled: !!address,
+      refetchInterval: 5000, // Refresh every 5 seconds to detect executions quickly
+      staleTime: 2000, // Consider data stale after 2 seconds
+    },
+  })
+}

@@ -1,10 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features
-  experimental: {
-    // appDir is now stable in Next.js 14, so we remove it
-    serverComponentsExternalPackages: ['@wagmi/core', 'viem'],
-  },
+  // Use Turbopack (Next.js 16+)
+  turbopack: {},
 
   // Environment variables
   env: {
@@ -37,7 +34,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://s3.tradingview.com https://charting-library.tradingview.com https://www.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
               "img-src 'self' data: https: https://s3.tradingview.com https://charting-library.tradingview.com https://www.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
               "font-src 'self' data: https://s3.tradingview.com https://charting-library.tradingview.com https://www.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
-              "connect-src 'self' https: wss: https://api.tradingview.com https://scanner.tradingview.com https://symbol-search.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
+              "connect-src 'self' http://localhost:* https: wss: https://api.tradingview.com https://scanner.tradingview.com https://symbol-search.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
               "frame-src 'self' https://s3.tradingview.com https://charting-library.tradingview.com https://www.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
               "worker-src 'self' blob:",
               "child-src 'self' https://s3.tradingview.com https://charting-library.tradingview.com https://www.tradingview.com https://s.tradingview.com https://tradingview-widget.com https://www.tradingview-widget.com",
@@ -49,7 +46,7 @@ const nextConfig = {
   },
 
   // Webpack configuration
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { isServer }) => {
     // Fix for wagmi/viem in client-side
     if (!isServer) {
       config.resolve.fallback = {
@@ -72,9 +69,6 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
 
-  // Enable SWC minification
-  swcMinify: true,
-
   // Disable powered by header
   poweredByHeader: false,
 
@@ -82,4 +76,4 @@ const nextConfig = {
   reactStrictMode: true,
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

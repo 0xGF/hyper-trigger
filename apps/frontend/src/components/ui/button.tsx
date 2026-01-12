@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils"
 
 const buttonVariants = {
   variant: {
-    default: "bg-primary text-background shadow hover:bg-secondary",
+    default: "bg-primary text-background shadow hover:bg-primary/80",
     destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
     outline: "border border-input bg-transparent shadow-sm hover:bg-input hover:text-accent-foreground",
-    secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+    secondary: "bg-muted text-foreground shadow-sm hover:bg-muted/80",
     ghost: "hover:bg-accent hover:text-accent-foreground",
     link: "text-primary underline-offset-4 hover:underline",
-    buy: "bg-green-500 text-black shadow hover:bg-green-400 font-medium",
-    sell: "bg-red-500 text-white shadow hover:bg-red-400 font-medium",
+    buy: "bg-primary text-primary-foreground shadow hover:bg-primary/90 font-medium",
+    sell: "bg-primary text-primary-foreground shadow hover:bg-primary/90 font-medium",
   },
   size: {
     default: "h-9 px-4 py-2",

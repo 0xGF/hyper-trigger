@@ -1,30 +1,67 @@
 {
-  "name": "@hyper-trigger/root",
-  "version": "0.1.0",
+  "name": "hyper-trigger",
+  "version": "1.0.0",
+  "description": "Production-ready cross-chain triggered trading platform on HyperEVM with bidirectional support",
   "private": true,
-  "description": "HyperTrigger - Automated Trading Triggers for Hyperliquid",
   "scripts": {
-    "dev": "turbo run dev --filter=@hyper-trigger/frontend @hyper-trigger/worker",
+    "dev": "turbo run dev --filter=@hyper-trigger/frontend --filter=@hyper-trigger/api --filter=@hyper-trigger/worker --parallel",
     "dev:frontend": "turbo run dev --filter=@hyper-trigger/frontend",
     "dev:worker": "turbo run dev --filter=@hyper-trigger/worker",
+    "dev:api": "turbo run dev --filter=@hyper-trigger/api",
     "dev:contracts": "turbo run dev --filter=@hyper-trigger/contracts",
     "dev:all": "turbo run dev --parallel",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:contracts": "pnpm --filter @hyper-trigger/contracts test",
+    "test:api": "pnpm --filter @hyper-trigger/api test",
+    "test:frontend": "pnpm --filter @hyper-trigger/frontend test",
     "clean": "turbo run clean",
     "deploy:testnet": "turbo run deploy:testnet --filter=@hyper-trigger/contracts",
-    "deploy:mainnet": "turbo run deploy:mainnet --filter=@hyper-trigger/contracts"
+    "deploy:mainnet": "turbo run deploy:mainnet --filter=@hyper-trigger/contracts",
+    "type-check": "turbo run type-check",
+    "check": "pnpm lint && pnpm type-check && pnpm test",
+    "generate": "turbo run generate",
+    "generate:api": "orval --config orval.config.ts",
+    "start": "chmod +x scripts/dev.sh && ./scripts/dev.sh"
   },
   "devDependencies": {
-    "turbo": "^1.10.0",
+    "turbo": "^1.10.16",
     "typescript": "^5.3.3",
     "prettier": "^3.1.1",
-    "eslint": "^8.56.0"
+    "eslint": "^8.56.0",
+    "orval": "^6.24.0",
+    "yaml": "^2.3.4"
   },
   "packageManager": "pnpm@8.10.0",
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "keywords": [
+    "hyper-trigger",
+    "cross-chain",
+    "triggered-trading",
+    "hyperevm",
+    "defi",
+    "automated-trading",
+    "price-triggers",
+    "bidirectional-swaps"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hyper-trigger/hyper-trigger"
+  },
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "pnpm": {
+    "overrides": {
+      "form-data": ">=4.0.4",
+      "glob@>=10.2.0 <10.5.0": ">=10.5.0",
+      "qs": ">=6.14.1"
+    }
   }
 } 

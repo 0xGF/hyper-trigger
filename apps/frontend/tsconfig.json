@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["DOM", "DOM.Iterable", "ES6"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES6"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -12,7 +16,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -21,25 +25,52 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/services/*": ["./src/services/*"],
-      "@/stores/*": ["./src/stores/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/ui": ["../../packages/ui/src"],
-      "@/contracts": ["../../packages/contracts/src"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/components/*": [
+        "./src/components/*"
+      ],
+      "@/hooks/*": [
+        "./src/hooks/*"
+      ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
+      "@/services/*": [
+        "./src/services/*"
+      ],
+      "@/stores/*": [
+        "./src/stores/*"
+      ],
+      "@/types/*": [
+        "./src/types/*"
+      ],
+      "@/utils/*": [
+        "./src/utils/*"
+      ],
+      "@/ui": [
+        "../../packages/ui/src"
+      ],
+      "@/contracts": [
+        "../../packages/contracts/src"
+      ]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "jest.setup.ts",
+    "jest.config.js"
   ]
-} 
+}

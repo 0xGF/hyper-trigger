@@ -4,114 +4,114 @@
 
 @layer base {
   :root {
-    /* Clean Trading Theme - Hex Values */
-    --background: #141718;
+    /* Clean Trading Theme */
+    --background: #191919;
     --foreground: #f2f2f2;
-    --card: #1f2122;
+    --card: #0d0d0d;
     --card-foreground: #f2f2f2;
-    --popover: #1f2122;
+    --popover: #1a1a1a;
     --popover-foreground: #f2f2f2;
-    --primary: #1FD392;
-    --primary-foreground: #ffffff;
-    --secondary: #27A69A;
+    --primary: hsl(172, 47%, 51%);
+    --primary-foreground: #000000;
+    --secondary: #151515;
     --secondary-foreground: #f2f2f2;
-    --muted: #1f2122;
+    --muted: #1f1f1f;
     --muted-foreground: #999999;
-    --accent: #1a1a1a;
+    --accent: #252525;
     --accent-foreground: #f2f2f2;
-    --destructive: #F05351;
-    --destructive-foreground: #ffffff;
-    --border: #3a728e;
-    --input: #1f2122;
-    --ring: #1FD392;
-    --radius: 0.375rem;
+    --destructive: #ed7088;
+    --destructive-foreground: #f2f2f2;
+    --border: #101010;
+    --input: #181818;
+    --ring: hsl(172, 47%, 51%);
+    --radius: 0.75rem;
     
-    /* Chart colors */
-    --chart-1: #1FD392; /* green */
-    --chart-2: #F05351; /* red */
-    --chart-3: #3b82f6; /* blue */
-    --chart-4: #eab308; /* yellow */
-    --chart-5: #a855f7; /* purple */
+    /* Chart colors - monochrome with primary accent */
+    --chart-1: hsl(172, 47%, 51%);
+    --chart-2: #666666;
+    --chart-3: #888888;
+    --chart-4: #aaaaaa;
+    --chart-5: #cccccc;
     
     /* Price Chart Theme Variables */
     --chart-background: #141718;
     --chart-text: #f2f2f2;
     --chart-grid: #262626;
-    --chart-crosshair: #27A69A;
+    --chart-crosshair: hsl(172, 47%, 51%);
     --chart-border: #262626;
     
-    /* Candlestick Colors */
-    --chart-candle-up: #1FD392;
-    --chart-candle-down: #F05351;
-    --chart-candle-up-wick: #1FD392;
-    --chart-candle-down-wick: #F05351;
-    --chart-candle-up-border: #1FD392;
-    --chart-candle-down-border: #F05351;
+    /* Candlestick Colors - primary teal and gray */
+    --chart-candle-up: hsl(172, 47%, 51%);
+    --chart-candle-down: #666666;
+    --chart-candle-up-wick: hsl(172, 47%, 51%);
+    --chart-candle-down-wick: #666666;
+    --chart-candle-up-border: hsl(172, 47%, 51%);
+    --chart-candle-down-border: #666666;
     
     /* Volume Colors */
-    --chart-volume-up: #1A635A;
-    --chart-volume-down: #833640;
-    --chart-volume-neutral: #1FD392;
+    --chart-volume-up: hsla(172, 47%, 51%, 0.3);
+    --chart-volume-down: rgba(102, 102, 102, 0.3);
+    --chart-volume-neutral: hsl(172, 47%, 51%);
     
     /* Price Change Colors */
-    --price-positive: #1FD392;
-    --price-negative: #F05351;
+    --price-positive: hsl(172, 47%, 51%);
+    --price-negative: #888888;
     --price-neutral: #f2f2f2;
     
     /* Order Book Colors */
-    --orderbook-bid: #1FD392;
-    --orderbook-ask: #F05351;
-    --orderbook-bid-bg: rgba(34, 197, 94, 0.1);
-    --orderbook-ask-bg: rgba(239, 68, 68, 0.1);
-    --orderbook-bid-hover: rgba(34, 197, 94, 0.05);
-    --orderbook-ask-hover: rgba(239, 68, 68, 0.05);
+    --orderbook-bid: hsl(172, 47%, 51%);
+    --orderbook-ask: #888888;
+    --orderbook-bid-bg: hsla(172, 47%, 51%, 0.1);
+    --orderbook-ask-bg: rgba(136, 136, 136, 0.1);
+    --orderbook-bid-hover: hsla(172, 47%, 51%, 0.05);
+    --orderbook-ask-hover: rgba(136, 136, 136, 0.05);
   }
 
   .dark {
-    --background: #141718;
+    --background: #1a1a1a;
     --foreground: #f2f2f2;
-    --card: #1f2122;
+    --card: #0d0d0d;
     --card-foreground: #f2f2f2;
-    --popover: #1f2122;
+    --popover: #1a1a1a;
     --popover-foreground: #f2f2f2;
-    --primary: #1FD392;
-    --primary-foreground: #ffffff;
-    --secondary: #27A69A;
+    --primary: hsl(172, 47%, 51%);
+    --primary-foreground: #000000;
+    --secondary: #151515;
     --secondary-foreground: #f2f2f2;
-    --muted: #1f2122;
+    --muted: #1f1f1f;
     --muted-foreground: #999999;
-    --accent: #1a1a1a;
+    --accent: #252525;
     --accent-foreground: #f2f2f2;
-    --destructive: #F05351;
-    --destructive-foreground: #ffffff;
-    --border: #262626;
-    --input: #1f2122;
-    --ring: #1FD392;
+    --destructive: #ef4444;
+    --destructive-foreground: #f2f2f2;
+    --border: #2a2a2a;
+    --input: #181818;
+    --ring: hsl(172, 47%, 51%);
     
-    /* Dark mode chart colors (same as light for now) */
+    /* Dark mode chart colors - monochrome with primary accent */
     --chart-background: #141718;
     --chart-text: #f2f2f2;
     --chart-grid: #262626;
-    --chart-crosshair: #27A69A;
+    --chart-crosshair: hsl(172, 47%, 51%);
     --chart-border: #262626;
-    --chart-candle-up: #1FD392;
-    --chart-candle-down: #F05351;
-    --chart-candle-up-wick: #1FD392;
-    --chart-candle-down-wick: #F05351;
-    --chart-candle-up-border: #1FD392;
-    --chart-candle-down-border: #F05351;
-    --chart-volume-up: #1A635A;
-    --chart-volume-down: #833640;
-    --chart-volume-neutral: #1FD392;
-    --price-positive: #1A635A;
-    --price-negative: #833640;
+    --chart-candle-up: hsl(172, 47%, 51%);
+    --chart-candle-down: #666666;
+    --chart-candle-up-wick: hsl(172, 47%, 51%);
+    --chart-candle-down-wick: #666666;
+    --chart-candle-up-border: hsl(172, 47%, 51%);
+    --chart-candle-down-border: #666666;
+    --chart-volume-up: hsla(172, 47%, 51%, 0.3);
+    --chart-volume-down: rgba(102, 102, 102, 0.3);
+    --chart-volume-neutral: hsl(172, 47%, 51%);
+    --price-positive: hsl(172, 47%, 51%);
+    --price-negative: #888888;
     --price-neutral: #f2f2f2;
-    --orderbook-bid: #1FD392;
-    --orderbook-ask: #F05351;
-    --orderbook-bid-bg: rgba(34, 197, 94, 0.1);
-    --orderbook-ask-bg: rgba(239, 68, 68, 0.1);
-    --orderbook-bid-hover: rgba(34, 197, 94, 0.05);
-    --orderbook-ask-hover: rgba(239, 68, 68, 0.05);
+    --orderbook-bid: hsl(172, 47%, 51%);
+    --orderbook-ask: #888888;
+    --orderbook-bid-bg: hsla(172, 47%, 51%, 0.1);
+    --orderbook-ask-bg: rgba(136, 136, 136, 0.1);
+    --orderbook-bid-hover: hsla(172, 47%, 51%, 0.05);
+    --orderbook-ask-hover: rgba(136, 136, 136, 0.05);
   }
 }
 
@@ -122,6 +122,8 @@
   
   body {
     background-color: var(--background);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1.5px, transparent 1.5px);
+    background-size: 20px 20px;
     color: var(--foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
@@ -130,4 +132,25 @@
   .wrapper {
     @apply max-w-7xl mx-auto px-4 w-full;
   }
+}
+
+/* Hide TradingView widget borders */
+.tradingview-widget-container,
+.tradingview-widget-container__widget,
+.tradingview-widget-container iframe,
+.tradingview-widget-container div,
+[class*="tradingview"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.tradingview-widget-container iframe {
+  margin: -1px !important;
+}
+
+/* Logo color filter to match primary hsl(172, 47%, 51%) */
+.logo-tint {
+  filter: brightness(0) saturate(100%) invert(67%) sepia(37%) saturate(507%) hue-rotate(121deg) brightness(92%) contrast(87%);
 } 

@@ -17,7 +17,6 @@ async function fetchTokenAddresses(): Promise<Record<string, `0x${string}` | 'na
     
     // For now, only HYPE is supported as native
     // Other tokens would need ERC20 contract addresses
-    console.log('✅ Token addresses loaded:', addresses)
     return addresses
   } catch (error) {
     console.error('❌ Failed to fetch token addresses:', error)
@@ -114,7 +113,7 @@ export function useTokenBalance({ address, token, enabled = true }: UseTokenBala
         error: null // Return null instead of error to stop spam
       }
     }
-  }, [loading, tokenAddress, nativeBalance, nativeLoading, nativeError, erc20Balance, erc20Loading, erc20Error, token])
+  }, [loading, tokenAddress, nativeBalance, nativeLoading, nativeError, erc20Balance, erc20Loading, erc20Error])
   
   const formattedBalance = useMemo(() => {
     if (!result.balance) return '0.00'
@@ -151,28 +150,50 @@ export function useTokenBalance({ address, token, enabled = true }: UseTokenBala
 }
 
 // Hook for multiple token balances
+// Uses individual balance fetches - this is a simplified version that only supports HYPE
 export function useMultipleTokenBalances(address?: `0x${string}`, tokens: string[] = []) {
-  const balances = tokens.reduce((acc, token) => {
-    const { balance, formattedBalance, isLoading, error } = useTokenBalance({ 
-      address, 
-      token, 
-      enabled: !!address 
-    })
+  // Get HYPE balance (native token)
+  const hypeBalance = useTokenBalance({ address, token: 'HYPE', enabled: !!address && tokens.includes('HYPE') })
+  
+  // Build balances object
+  const balances = useMemo(() => {
+    const result: Record<string, {
+      balance: typeof hypeBalance.balance
+      formattedBalance: string
+      isLoading: boolean
+      error: Error | null
+      symbol: string
+      decimals: number
+    }> = {}
     
-    acc[token] = {
-      balance,
-      formattedBalance,
-      isLoading,
-      error,
-      symbol: balance?.symbol || token,
-      decimals: balance?.decimals || 18
+    if (tokens.includes('HYPE')) {
+      result['HYPE'] = {
+        balance: hypeBalance.balance,
+        formattedBalance: hypeBalance.formattedBalance,
+        isLoading: hypeBalance.isLoading,
+        error: hypeBalance.error,
+        symbol: hypeBalance.symbol,
+        decimals: hypeBalance.decimals
+      }
     }
     
-    return acc
-  }, {} as Record<string, ReturnType<typeof useTokenBalance>>)
+    // For other tokens, return placeholder (only HYPE is supported as native)
+    tokens.filter(t => t !== 'HYPE').forEach(token => {
+      result[token] = {
+        balance: null,
+        formattedBalance: '0.00',
+        isLoading: false,
+        error: null,
+        symbol: token,
+        decimals: 18
+      }
+    })
+    
+    return result
+  }, [tokens, hypeBalance])
   
-  const isAnyLoading = Object.values(balances).some(b => b.isLoading)
-  const hasErrors = Object.values(balances).some(b => b.error)
+  const isAnyLoading = hypeBalance.isLoading
+  const hasErrors = !!hypeBalance.error
   
   return {
     balances,

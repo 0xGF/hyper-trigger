@@ -11,20 +11,18 @@
     "strict": true,
     "skipLibCheck": true,
     "noImplicitOverride": false,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*", "./scripts/*"]
-    },
-    "types": ["node", "mocha"]
+    }
   },
   "include": [
-    "src/**/*",
-    "contracts/**/*",
-    "scripts/**/*",
-    "test/**/*"
+    "hardhat.config.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "src/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -33,7 +31,8 @@
     "artifacts"
   ],
   "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
   }
 } 

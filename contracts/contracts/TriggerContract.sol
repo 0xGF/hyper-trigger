@@ -2,318 +2,437 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
- * @title TriggerContract - USDC-Only Price Triggers
- * @dev Price-triggered swaps using USDC as stable input (safe refunds)
+ * @title L1Read Interface
+ * @dev Interface for HyperCore oracle precompile - provides real-time price data
  */
-contract TriggerContract is AccessControl, ReentrancyGuard, Pausable {
+interface IL1Read {
+    // Get oracle price for perp asset (returns price * 10^6 / 10^szDecimals)
+    function oraclePx(uint32 index) external view returns (uint64);
+    
+    // Get oracle price for spot asset (returns price * 10^8 / 10^baseAssetSzDecimals)
+    function spotOraclePx(uint32 index) external view returns (uint64);
+}
+
+/**
+ * @title TriggerContract
+ * @dev Stores price-based trigger orders for HyperCore spot trading
+ * 
+ * ARCHITECTURE:
+ * - This contract ONLY stores trigger parameters (no funds held)
+ * - User's actual funds remain in their HyperCore spot balance
+ * - User must authorize the worker as an "agent" on Hyperliquid
+ * - When trigger conditions are met, worker executes trade via Hyperliquid API
+ * - Oracle prices are verified on-chain via HyperCore precompile
+ * 
+ * FLOW:
+ * 1. User authorizes worker as agent on Hyperliquid (one-time, off-chain)
+ * 2. User creates trigger here (stores intent on-chain)
+ * 3. Worker monitors triggers + prices
+ * 4. Condition met → Worker executes trade via HL API on user's behalf
+ * 5. Worker marks trigger as executed here, price verified via oracle
+ */
+contract TriggerContract is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
     
-    // HyperCore Precompile Addresses
-    address constant ORACLE_PRICES = 0x0000000000000000000000000000000000000807;
-    address constant SPOT_BALANCE = 0x0000000000000000000000000000000000000801;
-    address constant CORE_WRITER = 0x3333333333333333333333333333333333333333;
+    // HyperCore oracle precompile for price verification (0x807)
+    IL1Read constant ORACLE = IL1Read(0x0000000000000000000000000000000000000807);
     
-    // USDC token ID (assuming USDC is token ID 1)
-    uint64 public constant USDC_TOKEN_ID = 1;
+    // Configuration
+    uint256 public triggerFee = 0.001 ether; // Small fee to prevent spam
+    uint256 public constant MAX_TRIGGER_DURATION = 30 days;
+    uint256 public constant MIN_TRIGGER_DURATION = 1 hours;
     
-    uint256 public constant MAX_SLIPPAGE = 50; // 50% max slippage
-    uint256 public executionReward = 0.01 ether; // 0.01 HYPE reward for executors
-    uint256 public nextTriggerId = 1;
+    // Maximum price deviation allowed between worker price and oracle price (in basis points)
+    // 200 = 2% max deviation
+    uint256 public maxPriceDeviation = 200;
     
-    mapping(uint64 => address) public tokenContracts;
+    enum TriggerStatus { Active, Executed, Cancelled, Expired, Failed }
     
-    enum ExecutionState {
-        PENDING,        // Trigger created, waiting for execution
-        EXECUTING,      // Execution started, cross-layer operations in progress
-        COMPLETED,      // Execution completed successfully
-        FAILED,         // Execution failed, user can claim refund
-        CANCELLED       // User cancelled trigger
-    }
-    
+    /**
+     * @dev Trigger order parameters
+     * NOTE: No funds are held by contract - this is just the order intent
+     */
     struct Trigger {
         uint256 id;
-        address user;
-        uint32 targetOracleIndex;     // Oracle index for target token price monitoring
-        uint64 targetToken;           // Target token ID for trading (BTC, ETH, etc.)
-        uint256 usdcAmount;           // Amount of USDC to swap
-        uint256 triggerPrice;         // Target price (18 decimals)
-        bool isAbove;                 // true = trigger when price >= target, false = trigger when price <= target
-        uint256 maxSlippage;          // Max slippage percentage (basis points, e.g., 500 = 5%)
+        address user;              // User who created the trigger
+        
+        // Price monitoring
+        string watchAsset;         // Asset to watch for price (e.g., "BTC")
+        uint256 targetPrice;       // Price level to trigger at (6 decimals, like Hyperliquid)
+        bool isAbove;              // true = trigger when >= price, false = when <= price
+        
+        // Trade to execute when triggered
+        string tradeAsset;         // Asset to buy/sell (e.g., "FARTCOIN")
+        bool isBuy;                // true = buy with USDC, false = sell for USDC
+        uint256 amount;            // Amount in asset's native decimals (for buy: USDC amount, for sell: token amount)
+        uint256 maxSlippage;       // Max slippage in basis points (e.g., 100 = 1%)
+        
+        // Metadata
         uint256 createdAt;
-        ExecutionState state;         // Current execution state
-        uint256 executionStarted;     // Timestamp when execution started
-        uint256 outputAmount;         // Amount of target tokens received (set after execution)
+        uint256 expiresAt;
+        TriggerStatus status;
+        uint256 feePaid;           // Fee paid at creation (for accurate refunds)
+        
+        // Execution details (filled when executed)
+        uint256 executedAt;
+        uint256 executionPrice;
+        bytes32 executionTxHash;   // Hyperliquid order ID or tx hash
     }
     
+    // Storage
     mapping(uint256 => Trigger) public triggers;
     mapping(address => uint256[]) public userTriggers;
-    mapping(address => uint256) public userUsdcDeposits; // user => total USDC deposited
+    uint256 public nextTriggerId = 1;
+    uint256 public activeTriggerCount;  // Counter for active triggers (O(1) lookup)
     
+    // Asset symbol to oracle index mapping (e.g., "HYPE" => 1035 for testnet spot)
+    // Use spotOraclePx for spot assets
+    mapping(string => uint32) public assetToSpotIndex;
+    
+    // Events
     event TriggerCreated(
         uint256 indexed triggerId,
         address indexed user,
-        uint32 targetOracleIndex,
-        uint64 targetToken,
-        uint256 usdcAmount,
-        uint256 triggerPrice,
+        string watchAsset,
+        uint256 targetPrice,
         bool isAbove,
-        uint256 maxSlippage
-    );
-    
-    event TriggerExecutionStarted(
-        uint256 indexed triggerId,
-        address indexed executor,
-        uint256 executionPrice
+        string tradeAsset,
+        bool isBuy,
+        uint256 amount
     );
     
     event TriggerExecuted(
         uint256 indexed triggerId,
         address indexed executor,
         uint256 executionPrice,
-        uint256 outputAmount
-    );
-    
-    event TriggerExecutionFailed(
-        uint256 indexed triggerId,
-        address indexed executor,
-        string reason
+        bytes32 executionTxHash
     );
     
     event TriggerCancelled(uint256 indexed triggerId, address indexed user);
-    
-    event RefundClaimed(uint256 indexed triggerId, address indexed user, uint256 usdcAmount);
-    
-    // Custom errors
-    error InsufficientDeposit();
-    error TriggerNotFound();
-    error UnauthorizedUser();
-    error TriggerAlreadyExecuted();
-    error TriggerConditionNotMet();
-    error InvalidSlippage();
-    error OracleCallFailed();
-    error ZeroAmount();
-    error TokenContractNotSet();
-    error TriggerBeingExecuted();
-    error SwapFailed();
-    error NotRefundable();
+    event TriggerExpired(uint256 indexed triggerId);
+    event TriggerFailed(uint256 indexed triggerId, string reason);
+    event FeeUpdated(uint256 newFee);
+    event AssetIndexSet(string asset, uint32 spotIndex);
+    event PriceDeviationUpdated(uint256 newMaxDeviation);
     
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(EXECUTOR_ROLE, msg.sender);
     }
     
-    function setTokenContract(uint64 tokenId, address contractAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        tokenContracts[tokenId] = contractAddress;
-    }
-    
-    function setExecutionReward(uint256 newReward) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        executionReward = newReward;
-    }
-    
-    function getOraclePrice(uint32 oracleIndex) public view returns (uint64) {
-        (bool success, bytes memory result) = ORACLE_PRICES.staticcall(abi.encode(oracleIndex));
-        if (!success) revert OracleCallFailed();
-        return abi.decode(result, (uint64));
-    }
-    
-    function getContractSpotBalance(uint64 tokenId) public view returns (uint64 total, uint64 hold) {
-        (bool success, bytes memory result) = SPOT_BALANCE.staticcall(abi.encode(address(this), tokenId));
-        if (!success) revert OracleCallFailed();
-        (total, hold, ) = abi.decode(result, (uint64, uint64, uint64));
-    }
-    
-    function convertOraclePrice(uint64 rawPrice, uint8 assetDecimals) public pure returns (uint256) {
-        if (assetDecimals >= 18) {
-            return uint256(rawPrice) / (10 ** (assetDecimals - 18));
-        } else {
-            return uint256(rawPrice) * (10 ** (18 - assetDecimals));
-        }
-    }
-    
-    function getSystemAddress(uint64 tokenId) public pure returns (address) {
-        if (tokenId == 0) {
-            return 0x2222222222222222222222222222222222222222;
-        }
-        uint256 baseAddr = 0x2000000000000000000000000000000000000000000000000000000000000000;
-        return address(uint160((baseAddr >> 96) | uint256(tokenId)));
-    }
-    
     /**
-     * @dev Create a trigger using USDC as input
-     * @param targetOracleIndex Oracle index for target token price
-     * @param targetToken Target token ID (BTC, ETH, etc.)
-     * @param usdcAmount Amount of USDC to swap
-     * @param triggerPrice Target price (18 decimals)
-     * @param isAbove true = trigger when price >= target, false = trigger when price <= target
-     * @param maxSlippage Max slippage percentage (basis points)
+     * @dev Create a new price-based trigger order
+     * @param watchAsset Asset to monitor for price (e.g., "BTC", "ETH")
+     * @param targetPrice Target price in 6 decimals (Hyperliquid format)
+     * @param isAbove true = trigger when price >= target, false = when <= target
+     * @param tradeAsset Asset to trade when triggered (e.g., "FARTCOIN", "HYPE")
+     * @param isBuy true = buy tradeAsset with USDC, false = sell tradeAsset for USDC
+     * @param amount Amount to trade (USDC amount for buy, token amount for sell)
+     * @param maxSlippage Maximum slippage in basis points (100 = 1%)
+     * @param durationHours How long the trigger is valid
      */
     function createTrigger(
-        uint32 targetOracleIndex,
-        uint64 targetToken,
-        uint256 usdcAmount,
-        uint256 triggerPrice,
+        string calldata watchAsset,
+        uint256 targetPrice,
         bool isAbove,
-        uint256 maxSlippage
-    ) external payable nonReentrant whenNotPaused {
-        if (usdcAmount == 0) revert ZeroAmount();
-        if (maxSlippage > MAX_SLIPPAGE * 100) revert InvalidSlippage(); // Max 50%
-        if (msg.value < executionReward) revert InsufficientDeposit();
+        string calldata tradeAsset,
+        bool isBuy,
+        uint256 amount,
+        uint256 maxSlippage,
+        uint256 durationHours
+    ) external payable whenNotPaused nonReentrant returns (uint256 triggerId) {
+        require(bytes(watchAsset).length > 0, "Watch asset required");
+        require(bytes(tradeAsset).length > 0, "Trade asset required");
+        require(targetPrice > 0, "Target price must be > 0");
+        require(amount > 0, "Amount must be > 0");
+        require(maxSlippage <= 5000, "Max slippage too high"); // Max 50%
+        require(durationHours >= MIN_TRIGGER_DURATION / 1 hours, "Duration too short");
+        require(durationHours <= MAX_TRIGGER_DURATION / 1 hours, "Duration too long");
+        require(msg.value >= triggerFee, "Insufficient trigger fee");
         
-        // Validate oracle index exists by trying to get its price
-        getOraclePrice(targetOracleIndex);
-        
-        // Transfer USDC from user
-        address usdcContract = tokenContracts[USDC_TOKEN_ID];
-        if (usdcContract == address(0)) revert TokenContractNotSet();
-        IERC20(usdcContract).transferFrom(msg.sender, address(this), usdcAmount);
-        
-        uint256 triggerId = nextTriggerId++;
+        triggerId = nextTriggerId++;
+        uint256 expiresAt = block.timestamp + (durationHours * 1 hours);
         
         triggers[triggerId] = Trigger({
             id: triggerId,
             user: msg.sender,
-            targetOracleIndex: targetOracleIndex,
-            targetToken: targetToken,
-            usdcAmount: usdcAmount,
-            triggerPrice: triggerPrice,
+            watchAsset: watchAsset,
+            targetPrice: targetPrice,
             isAbove: isAbove,
+            tradeAsset: tradeAsset,
+            isBuy: isBuy,
+            amount: amount,
             maxSlippage: maxSlippage,
             createdAt: block.timestamp,
-            state: ExecutionState.PENDING,
-            executionStarted: 0,
-            outputAmount: 0
+            expiresAt: expiresAt,
+            status: TriggerStatus.Active,
+            feePaid: msg.value,  // Store actual fee paid for accurate refunds
+            executedAt: 0,
+            executionPrice: 0,
+            executionTxHash: bytes32(0)
         });
         
         userTriggers[msg.sender].push(triggerId);
-        userUsdcDeposits[msg.sender] += usdcAmount;
+        activeTriggerCount++;  // Increment counter
         
-        emit TriggerCreated(triggerId, msg.sender, targetOracleIndex, targetToken, usdcAmount, triggerPrice, isAbove, maxSlippage);
-    }
-    
-    function startTriggerExecution(uint256 triggerId) external nonReentrant whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        Trigger storage trigger = triggers[triggerId];
-        
-        if (trigger.user == address(0)) revert TriggerNotFound();
-        if (trigger.state != ExecutionState.PENDING) revert TriggerAlreadyExecuted();
-        
-        // Check trigger condition
-        uint64 rawPrice = getOraclePrice(trigger.targetOracleIndex);
-        uint256 currentPrice = convertOraclePrice(rawPrice, 6); // Assume 6 decimals
-        
-        bool conditionMet = trigger.isAbove ? 
-            currentPrice >= trigger.triggerPrice : 
-            currentPrice <= trigger.triggerPrice;
-            
-        if (!conditionMet) revert TriggerConditionNotMet();
-        
-        trigger.state = ExecutionState.EXECUTING;
-        trigger.executionStarted = block.timestamp;
-        
-        // Bridge USDC to HyperCore
-        _bridgeToHyperCore(USDC_TOKEN_ID, trigger.usdcAmount);
-        
-        emit TriggerExecutionStarted(triggerId, msg.sender, currentPrice);
-    }
-    
-    function completeTriggerExecution(uint256 triggerId, uint256 actualOutputAmount) external nonReentrant whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        Trigger storage trigger = triggers[triggerId];
-        
-        if (trigger.user == address(0)) revert TriggerNotFound();
-        if (trigger.state != ExecutionState.EXECUTING) revert TriggerAlreadyExecuted();
-        
-        // Verify we have the target tokens
-        (uint64 contractBalance, ) = getContractSpotBalance(trigger.targetToken);
-        if (contractBalance < actualOutputAmount) revert SwapFailed();
-        
-        // Bridge target tokens back to user
-        _bridgeFromHyperCore(trigger.user, trigger.targetToken, actualOutputAmount);
-        
-        trigger.state = ExecutionState.COMPLETED;
-        trigger.outputAmount = actualOutputAmount;
-        
-        // Pay executor reward
-        payable(msg.sender).transfer(executionReward);
-        
-        // Update user deposits
-        userUsdcDeposits[trigger.user] -= trigger.usdcAmount;
-        
-        uint64 rawPrice = getOraclePrice(trigger.targetOracleIndex);
-        uint256 currentPrice = convertOraclePrice(rawPrice, 6);
-        
-        emit TriggerExecuted(triggerId, msg.sender, currentPrice, actualOutputAmount);
-    }
-    
-    function markExecutionFailed(uint256 triggerId, string calldata reason) external nonReentrant onlyRole(EXECUTOR_ROLE) {
-        Trigger storage trigger = triggers[triggerId];
-        
-        if (trigger.user == address(0)) revert TriggerNotFound();
-        if (trigger.state != ExecutionState.EXECUTING) revert TriggerAlreadyExecuted();
-        
-        trigger.state = ExecutionState.FAILED;
-        
-        emit TriggerExecutionFailed(triggerId, msg.sender, reason);
+        emit TriggerCreated(
+            triggerId,
+            msg.sender,
+            watchAsset,
+            targetPrice,
+            isAbove,
+            tradeAsset,
+            isBuy,
+            amount
+        );
     }
     
     /**
-     * @dev Cancel a pending trigger and get refund
+     * @dev Get oracle price for an asset
+     * @param asset Asset symbol (e.g., "HYPE")
+     * @return price Oracle price (8 decimals for spot)
+     * @return valid Whether the oracle returned a valid price
+     */
+    function getOraclePrice(string memory asset) public view returns (uint64 price, bool valid) {
+        uint32 spotIndex = assetToSpotIndex[asset];
+        if (spotIndex == 0) {
+            return (0, false);
+        }
+        
+        try ORACLE.spotOraclePx(spotIndex) returns (uint64 oraclePrice) {
+            return (oraclePrice, oraclePrice > 0);
+        } catch {
+            return (0, false);
+        }
+    }
+    
+    /**
+     * @dev Verify execution price against oracle within acceptable deviation
+     * @param asset Asset to verify
+     * @param executionPrice Price reported by worker (6 decimals)
+     * @return valid Whether the price is within acceptable bounds
+     */
+    function verifyPriceWithOracle(string memory asset, uint256 executionPrice) public view returns (bool valid) {
+        (uint64 oraclePrice, bool oracleValid) = getOraclePrice(asset);
+        
+        // If no oracle mapping, skip verification (allow execution)
+        if (!oracleValid) {
+            return true;
+        }
+        
+        // Convert oracle price (8 decimals) to 6 decimals for comparison
+        uint256 normalizedOraclePrice = uint256(oraclePrice) / 100;
+        
+        // Calculate deviation: |executionPrice - oraclePrice| / oraclePrice * 10000
+        uint256 deviation;
+        if (executionPrice > normalizedOraclePrice) {
+            deviation = ((executionPrice - normalizedOraclePrice) * 10000) / normalizedOraclePrice;
+        } else {
+            deviation = ((normalizedOraclePrice - executionPrice) * 10000) / normalizedOraclePrice;
+        }
+        
+        return deviation <= maxPriceDeviation;
+    }
+    
+    /**
+     * @dev Mark trigger as executed (called by worker after executing trade on Hyperliquid)
+     * Verifies execution price against on-chain oracle
+     * @param triggerId The trigger to mark executed
+     * @param executionPrice The price at which the trade was executed
+     * @param executionTxHash The Hyperliquid order ID or transaction reference
+     */
+    function markExecuted(
+        uint256 triggerId,
+        uint256 executionPrice,
+        bytes32 executionTxHash
+    ) external onlyRole(EXECUTOR_ROLE) {
+        Trigger storage trigger = triggers[triggerId];
+        require(trigger.status == TriggerStatus.Active, "Trigger not active");
+        
+        // Verify execution price against oracle (for the trade asset)
+        require(
+            verifyPriceWithOracle(trigger.tradeAsset, executionPrice),
+            "Execution price deviates too much from oracle"
+        );
+        
+        trigger.status = TriggerStatus.Executed;
+        trigger.executedAt = block.timestamp;
+        trigger.executionPrice = executionPrice;
+        trigger.executionTxHash = executionTxHash;
+        activeTriggerCount--;  // Decrement counter
+        
+        emit TriggerExecuted(triggerId, msg.sender, executionPrice, executionTxHash);
+    }
+    
+    /**
+     * @dev Mark trigger as failed (called by worker if trade fails)
+     * @param triggerId The trigger that failed
+     * @param reason Why it failed
+     */
+    function markFailed(uint256 triggerId, string calldata reason) external onlyRole(EXECUTOR_ROLE) {
+        Trigger storage trigger = triggers[triggerId];
+        require(trigger.status == TriggerStatus.Active, "Trigger not active");
+        
+        trigger.status = TriggerStatus.Failed;
+        activeTriggerCount--;  // Decrement counter
+        
+        emit TriggerFailed(triggerId, reason);
+    }
+    
+    /**
+     * @dev Cancel an active trigger (user only)
      */
     function cancelTrigger(uint256 triggerId) external nonReentrant {
         Trigger storage trigger = triggers[triggerId];
+        require(trigger.user == msg.sender, "Not trigger owner");
+        require(trigger.status == TriggerStatus.Active, "Trigger not active");
         
-        if (trigger.user != msg.sender) revert UnauthorizedUser();
-        if (trigger.state == ExecutionState.COMPLETED) revert TriggerAlreadyExecuted();
-        if (trigger.state == ExecutionState.EXECUTING) revert TriggerBeingExecuted();
+        // Store fee before state changes (CEI pattern)
+        uint256 refundAmount = trigger.feePaid;
         
-        trigger.state = ExecutionState.CANCELLED;
+        // Update state first
+        trigger.status = TriggerStatus.Cancelled;
+        activeTriggerCount--;  // Decrement counter
         
-        // Refund USDC and execution reward
-        address usdcContract = tokenContracts[USDC_TOKEN_ID];
-        IERC20(usdcContract).transfer(msg.sender, trigger.usdcAmount);
-        payable(msg.sender).transfer(executionReward);
-        
-        userUsdcDeposits[msg.sender] -= trigger.usdcAmount;
+        // Refund the actual fee paid (not current triggerFee)
+        if (refundAmount > 0) {
+            (bool success,) = msg.sender.call{value: refundAmount}("");
+            require(success, "Fee refund failed");
+        }
         
         emit TriggerCancelled(triggerId, msg.sender);
     }
     
     /**
-     * @dev Claim refund for failed execution
-     * Returns original USDC amount (no price volatility risk!)
+     * @dev Update a trigger's price in a single atomic transaction
+     * Cancels the old trigger and creates a new one with updated price
+     * @param oldTriggerId The trigger to update
+     * @param newTargetPrice New target price (6 decimals)
+     * @param newIsAbove New direction (true = above, false = below)
      */
-    function claimRefund(uint256 triggerId) external nonReentrant {
+    function updateTriggerPrice(
+        uint256 oldTriggerId,
+        uint256 newTargetPrice,
+        bool newIsAbove
+    ) external payable whenNotPaused nonReentrant returns (uint256 newTriggerId) {
+        Trigger storage oldTrigger = triggers[oldTriggerId];
+        require(oldTrigger.user == msg.sender, "Not trigger owner");
+        require(oldTrigger.status == TriggerStatus.Active, "Trigger not active");
+        require(newTargetPrice > 0, "Target price must be > 0");
+        
+        // Store old trigger data before cancellation
+        string memory watchAsset = oldTrigger.watchAsset;
+        string memory tradeAsset = oldTrigger.tradeAsset;
+        bool isBuy = oldTrigger.isBuy;
+        uint256 amount = oldTrigger.amount;
+        uint256 maxSlippage = oldTrigger.maxSlippage;
+        uint256 oldFeePaid = oldTrigger.feePaid;
+        
+        // Cancel old trigger (update state)
+        oldTrigger.status = TriggerStatus.Cancelled;
+        activeTriggerCount--;
+        
+        emit TriggerCancelled(oldTriggerId, msg.sender);
+        
+        // Calculate total fee available (refund + any additional payment)
+        uint256 totalFee = oldFeePaid + msg.value;
+        require(totalFee >= triggerFee, "Insufficient trigger fee");
+        
+        // Create new trigger with same duration (24 hours from now)
+        newTriggerId = nextTriggerId++;
+        uint256 expiresAt = block.timestamp + (24 hours);
+        
+        triggers[newTriggerId] = Trigger({
+            id: newTriggerId,
+            user: msg.sender,
+            watchAsset: watchAsset,
+            targetPrice: newTargetPrice,
+            isAbove: newIsAbove,
+            tradeAsset: tradeAsset,
+            isBuy: isBuy,
+            amount: amount,
+            maxSlippage: maxSlippage,
+            createdAt: block.timestamp,
+            expiresAt: expiresAt,
+            status: TriggerStatus.Active,
+            feePaid: totalFee,
+            executedAt: 0,
+            executionPrice: 0,
+            executionTxHash: bytes32(0)
+        });
+        
+        userTriggers[msg.sender].push(newTriggerId);
+        activeTriggerCount++;
+        
+        emit TriggerCreated(
+            newTriggerId,
+            msg.sender,
+            watchAsset,
+            newTargetPrice,
+            newIsAbove,
+            tradeAsset,
+            isBuy,
+            amount
+        );
+    }
+    
+    /**
+     * @dev Check if trigger conditions are met
+     * @param triggerId The trigger to check
+     * @param currentPrice Current price of the watch asset (6 decimals)
+     */
+    function checkTrigger(uint256 triggerId, uint256 currentPrice) 
+        external 
+        view 
+        returns (bool shouldExecute, string memory reason) 
+    {
         Trigger storage trigger = triggers[triggerId];
         
-        if (trigger.user != msg.sender) revert UnauthorizedUser();
-        if (trigger.state != ExecutionState.FAILED) revert NotRefundable();
-        
-        trigger.state = ExecutionState.CANCELLED; // Mark as processed
-        
-        // Bridge USDC back from HyperCore if needed, or use contract balance
-        // For failed executions, we return the original USDC amount
-        address usdcContract = tokenContracts[USDC_TOKEN_ID];
-        
-        // Try to use contract USDC balance first
-        uint256 contractUsdcBalance = IERC20(usdcContract).balanceOf(address(this));
-        if (contractUsdcBalance >= trigger.usdcAmount) {
-            // Use contract balance
-            IERC20(usdcContract).transfer(msg.sender, trigger.usdcAmount);
-        } else {
-            // Bridge back from HyperCore
-            _bridgeFromHyperCore(msg.sender, USDC_TOKEN_ID, trigger.usdcAmount);
+        if (trigger.status != TriggerStatus.Active) {
+            return (false, "Trigger not active");
         }
         
-        // Refund execution reward
-        payable(msg.sender).transfer(executionReward);
+        if (block.timestamp > trigger.expiresAt) {
+            return (false, "Trigger expired");
+        }
         
-        userUsdcDeposits[msg.sender] -= trigger.usdcAmount;
+        if (currentPrice == 0) {
+            return (false, "Invalid price");
+        }
         
-        emit RefundClaimed(triggerId, msg.sender, trigger.usdcAmount);
+        bool conditionMet = trigger.isAbove ? 
+            currentPrice >= trigger.targetPrice : 
+            currentPrice <= trigger.targetPrice;
+        
+        if (!conditionMet) {
+            return (false, "Price condition not met");
+        }
+        
+        return (true, "Ready to execute");
     }
+    
+    /**
+     * @dev Clean up expired triggers
+     */
+    function markExpired(uint256[] calldata triggerIds) external {
+        for (uint256 i = 0; i < triggerIds.length; i++) {
+            Trigger storage trigger = triggers[triggerIds[i]];
+            
+            if (trigger.status == TriggerStatus.Active && block.timestamp > trigger.expiresAt) {
+                trigger.status = TriggerStatus.Expired;
+                activeTriggerCount--;  // Decrement counter
+                emit TriggerExpired(triggerIds[i]);
+            }
+        }
+    }
+    
+    // ============================================
+    // View Functions
+    // ============================================
     
     function getTrigger(uint256 triggerId) external view returns (Trigger memory) {
         return triggers[triggerId];
@@ -323,43 +442,72 @@ contract TriggerContract is AccessControl, ReentrancyGuard, Pausable {
         return userTriggers[user];
     }
     
-    function isTriggerReady(uint256 triggerId) external view returns (bool conditionMet, uint256 currentPrice) {
-        Trigger storage trigger = triggers[triggerId];
-        if (trigger.user == address(0)) return (false, 0);
+    function getUserActiveTriggers(address user) external view returns (Trigger[] memory) {
+        uint256[] memory ids = userTriggers[user];
+        uint256 activeCount = 0;
         
-        uint64 rawPrice = getOraclePrice(trigger.targetOracleIndex);
-        currentPrice = convertOraclePrice(rawPrice, 6);
+        // Count active triggers
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (triggers[ids[i]].status == TriggerStatus.Active) {
+                activeCount++;
+            }
+        }
         
-        conditionMet = trigger.isAbove ? 
-            currentPrice >= trigger.triggerPrice : 
-            currentPrice <= trigger.triggerPrice;
+        // Build result array
+        Trigger[] memory result = new Trigger[](activeCount);
+        uint256 j = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (triggers[ids[i]].status == TriggerStatus.Active) {
+                result[j++] = triggers[ids[i]];
+            }
+        }
+        
+        return result;
     }
     
-    function _bridgeToHyperCore(uint64 tokenId, uint256 amount) internal {
-        address systemAddr = getSystemAddress(tokenId);
-        
-        if (tokenId == 0) {
-            payable(systemAddr).transfer(amount);
-        } else {
-            address tokenContract = tokenContracts[tokenId];
-            IERC20(tokenContract).transfer(systemAddr, amount);
+    function getActiveTriggerCount() external view returns (uint256) {
+        return activeTriggerCount;  // O(1) lookup using counter
+    }
+    
+    // ============================================
+    // Admin Functions
+    // ============================================
+    
+    function updateTriggerFee(uint256 newFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        triggerFee = newFee;
+        emit FeeUpdated(newFee);
+    }
+    
+    /**
+     * @dev Set oracle index for an asset (for price verification)
+     * @param asset Asset symbol (e.g., "HYPE")
+     * @param spotIndex Spot oracle index from HyperCore
+     */
+    function setAssetIndex(string calldata asset, uint32 spotIndex) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        assetToSpotIndex[asset] = spotIndex;
+        emit AssetIndexSet(asset, spotIndex);
+    }
+    
+    /**
+     * @dev Batch set oracle indexes for multiple assets
+     */
+    function setAssetIndexes(string[] calldata assets, uint32[] calldata spotIndexes) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(assets.length == spotIndexes.length, "Array length mismatch");
+        for (uint256 i = 0; i < assets.length; i++) {
+            assetToSpotIndex[assets[i]] = spotIndexes[i];
+            emit AssetIndexSet(assets[i], spotIndexes[i]);
         }
     }
     
-    function _bridgeFromHyperCore(address user, uint64 tokenId, uint256 amount) internal {
-        // Action ID 6: spotSend
-        bytes memory actionData = abi.encode(
-            uint8(6), // Action ID
-            user,
-            tokenId,
-            amount
-        );
-        
-        (bool success, ) = CORE_WRITER.call(abi.encodeWithSignature("sendRawAction(bytes)", actionData));
-        if (!success) revert SwapFailed();
+    /**
+     * @dev Update max price deviation allowed (in basis points)
+     */
+    function updateMaxPriceDeviation(uint256 newMaxDeviation) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newMaxDeviation <= 1000, "Deviation too high"); // Max 10%
+        maxPriceDeviation = newMaxDeviation;
+        emit PriceDeviationUpdated(newMaxDeviation);
     }
     
-    // Emergency functions
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
@@ -368,12 +516,13 @@ contract TriggerContract is AccessControl, ReentrancyGuard, Pausable {
         _unpause();
     }
     
-    function emergencyWithdraw(uint64 tokenId, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (tokenId == 0) {
-            payable(msg.sender).transfer(amount);
-        } else {
-            address tokenContract = tokenContracts[tokenId];
-            IERC20(tokenContract).transfer(msg.sender, amount);
-        }
+    function withdrawFees() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No fees to withdraw");
+        
+        (bool success,) = msg.sender.call{value: balance}("");
+        require(success, "Withdrawal failed");
     }
-} 
+    
+    receive() external payable {}
+}

@@ -23,41 +23,81 @@ import type {
   TypedContractMethod,
 } from "../common";
 
+export declare namespace SwapContract {
+  export type SwapRequestStruct = {
+    user: AddressLike;
+    fromToken: BigNumberish;
+    toToken: BigNumberish;
+    fromAmount: BigNumberish;
+    minOutputAmount: BigNumberish;
+    slippageBps: BigNumberish;
+    timestamp: BigNumberish;
+    completed: boolean;
+  };
+
+  export type SwapRequestStructOutput = [
+    user: string,
+    fromToken: bigint,
+    toToken: bigint,
+    fromAmount: bigint,
+    minOutputAmount: bigint,
+    slippageBps: bigint,
+    timestamp: bigint,
+    completed: boolean
+  ] & {
+    user: string;
+    fromToken: bigint;
+    toToken: bigint;
+    fromAmount: bigint;
+    minOutputAmount: bigint;
+    slippageBps: bigint;
+    timestamp: bigint;
+    completed: boolean;
+  };
+}
+
 export interface SwapContractInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
       | "EXECUTOR_ROLE"
       | "MAX_SLIPPAGE"
-      | "convertOraclePrice"
+      | "completeSwap"
+      | "emergencyWithdraw"
       | "executeSwap"
-      | "getContractSpotBalance"
       | "getOraclePrice"
       | "getRoleAdmin"
-      | "getSystemAddress"
+      | "getSpotBalance"
+      | "getSwap"
+      | "getTokenSystemAddress"
+      | "getUserSwaps"
       | "grantRole"
       | "hasRole"
+      | "nextSwapId"
       | "pause"
       | "paused"
       | "renounceRole"
       | "revokeRole"
-      | "setSwapFee"
-      | "setTokenContract"
+      | "sendHypeToSystem"
       | "supportsInterface"
       | "swapFee"
-      | "tokenContracts"
+      | "swapRequests"
       | "unpause"
+      | "updateSwapFee"
+      | "userSwaps"
       | "withdrawFees"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "FeeUpdated"
+      | "HypeSystemTransfer"
       | "Paused"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
-      | "SwapExecuted"
-      | "SwapFailed"
+      | "SwapCompleted"
+      | "SwapInitiated"
       | "Unpaused"
   ): EventFragment;
 
@@ -74,8 +114,12 @@ export interface SwapContractInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "convertOraclePrice",
+    functionFragment: "completeSwap",
     values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "emergencyWithdraw",
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "executeSwap",
@@ -85,12 +129,8 @@ export interface SwapContractInterface extends Interface {
       BigNumberish,
       BigNumberish,
       BigNumberish,
-      BigNumberish
+      AddressLike
     ]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getContractSpotBalance",
-    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getOraclePrice",
@@ -101,8 +141,20 @@ export interface SwapContractInterface extends Interface {
     values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "getSystemAddress",
+    functionFragment: "getSpotBalance",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getSwap",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getTokenSystemAddress",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getUserSwaps",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
@@ -111,6 +163,10 @@ export interface SwapContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "hasRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "nextSwapId",
+    values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "paused", values?: undefined): string;
@@ -123,12 +179,8 @@ export interface SwapContractInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "setSwapFee",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "setTokenContract",
-    values: [BigNumberish, AddressLike]
+    functionFragment: "sendHypeToSystem",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
@@ -136,10 +188,18 @@ export interface SwapContractInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "swapFee", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "tokenContracts",
+    functionFragment: "swapRequests",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "updateSwapFee",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "userSwaps",
+    values: [AddressLike, BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "withdrawFees",
     values?: undefined
@@ -158,15 +218,15 @@ export interface SwapContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "convertOraclePrice",
+    functionFragment: "completeSwap",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "emergencyWithdraw",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "executeSwap",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getContractSpotBalance",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -178,11 +238,21 @@ export interface SwapContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getSystemAddress",
+    functionFragment: "getSpotBalance",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "getSwap", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getTokenSystemAddress",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getUserSwaps",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "nextSwapId", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
   decodeFunctionResult(
@@ -190,9 +260,8 @@ export interface SwapContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "setSwapFee", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "setTokenContract",
+    functionFragment: "sendHypeToSystem",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -201,14 +270,44 @@ export interface SwapContractInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "swapFee", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "tokenContracts",
+    functionFragment: "swapRequests",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "updateSwapFee",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "userSwaps", data: BytesLike): Result;
+  decodeFunctionResult(
     functionFragment: "withdrawFees",
     data: BytesLike
   ): Result;
+}
+
+export namespace FeeUpdatedEvent {
+  export type InputTuple = [newFee: BigNumberish];
+  export type OutputTuple = [newFee: bigint];
+  export interface OutputObject {
+    newFee: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace HypeSystemTransferEvent {
+  export type InputTuple = [user: AddressLike, amount: BigNumberish];
+  export type OutputTuple = [user: string, amount: bigint];
+  export interface OutputObject {
+    user: string;
+    amount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace PausedEvent {
@@ -281,30 +380,21 @@ export namespace RoleRevokedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace SwapExecutedEvent {
+export namespace SwapCompletedEvent {
   export type InputTuple = [
+    swapId: BigNumberish,
     user: AddressLike,
-    fromToken: BigNumberish,
-    targetToken: BigNumberish,
-    inputAmount: BigNumberish,
-    outputAmount: BigNumberish,
-    executionPrice: BigNumberish
+    outputAmount: BigNumberish
   ];
   export type OutputTuple = [
+    swapId: bigint,
     user: string,
-    fromToken: bigint,
-    targetToken: bigint,
-    inputAmount: bigint,
-    outputAmount: bigint,
-    executionPrice: bigint
+    outputAmount: bigint
   ];
   export interface OutputObject {
+    swapId: bigint;
     user: string;
-    fromToken: bigint;
-    targetToken: bigint;
-    inputAmount: bigint;
     outputAmount: bigint;
-    executionPrice: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -312,27 +402,30 @@ export namespace SwapExecutedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace SwapFailedEvent {
+export namespace SwapInitiatedEvent {
   export type InputTuple = [
+    swapId: BigNumberish,
     user: AddressLike,
     fromToken: BigNumberish,
-    targetToken: BigNumberish,
-    inputAmount: BigNumberish,
-    reason: string
+    toToken: BigNumberish,
+    fromAmount: BigNumberish,
+    minOutputAmount: BigNumberish
   ];
   export type OutputTuple = [
+    swapId: bigint,
     user: string,
     fromToken: bigint,
-    targetToken: bigint,
-    inputAmount: bigint,
-    reason: string
+    toToken: bigint,
+    fromAmount: bigint,
+    minOutputAmount: bigint
   ];
   export interface OutputObject {
+    swapId: bigint;
     user: string;
     fromToken: bigint;
-    targetToken: bigint;
-    inputAmount: bigint;
-    reason: string;
+    toToken: bigint;
+    fromAmount: bigint;
+    minOutputAmount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -401,29 +494,29 @@ export interface SwapContract extends BaseContract {
 
   MAX_SLIPPAGE: TypedContractMethod<[], [bigint], "view">;
 
-  convertOraclePrice: TypedContractMethod<
-    [rawPrice: BigNumberish, assetDecimals: BigNumberish],
-    [bigint],
-    "view"
+  completeSwap: TypedContractMethod<
+    [swapId: BigNumberish, outputAmount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  emergencyWithdraw: TypedContractMethod<
+    [token: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
   >;
 
   executeSwap: TypedContractMethod<
     [
       fromToken: BigNumberish,
-      targetToken: BigNumberish,
-      inputAmount: BigNumberish,
+      toToken: BigNumberish,
+      fromAmount: BigNumberish,
       minOutputAmount: BigNumberish,
-      fromOracleIndex: BigNumberish,
-      targetOracleIndex: BigNumberish
+      slippageBps: BigNumberish,
+      fromTokenAddress: AddressLike
     ],
-    [void],
+    [bigint],
     "payable"
-  >;
-
-  getContractSpotBalance: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [[bigint, bigint] & { total: bigint; hold: bigint }],
-    "view"
   >;
 
   getOraclePrice: TypedContractMethod<
@@ -434,11 +527,25 @@ export interface SwapContract extends BaseContract {
 
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
 
-  getSystemAddress: TypedContractMethod<
-    [tokenId: BigNumberish],
+  getSpotBalance: TypedContractMethod<
+    [user: AddressLike, token: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  getSwap: TypedContractMethod<
+    [swapId: BigNumberish],
+    [SwapContract.SwapRequestStructOutput],
+    "view"
+  >;
+
+  getTokenSystemAddress: TypedContractMethod<
+    [tokenIndex: BigNumberish],
     [string],
     "view"
   >;
+
+  getUserSwaps: TypedContractMethod<[user: AddressLike], [bigint[]], "view">;
 
   grantRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -451,6 +558,8 @@ export interface SwapContract extends BaseContract {
     [boolean],
     "view"
   >;
+
+  nextSwapId: TypedContractMethod<[], [bigint], "view">;
 
   pause: TypedContractMethod<[], [void], "nonpayable">;
 
@@ -468,13 +577,7 @@ export interface SwapContract extends BaseContract {
     "nonpayable"
   >;
 
-  setSwapFee: TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
-
-  setTokenContract: TypedContractMethod<
-    [tokenId: BigNumberish, contractAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  sendHypeToSystem: TypedContractMethod<[], [void], "payable">;
 
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
@@ -484,9 +587,36 @@ export interface SwapContract extends BaseContract {
 
   swapFee: TypedContractMethod<[], [bigint], "view">;
 
-  tokenContracts: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  swapRequests: TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [string, bigint, bigint, bigint, bigint, bigint, bigint, boolean] & {
+        user: string;
+        fromToken: bigint;
+        toToken: bigint;
+        fromAmount: bigint;
+        minOutputAmount: bigint;
+        slippageBps: bigint;
+        timestamp: bigint;
+        completed: boolean;
+      }
+    ],
+    "view"
+  >;
 
   unpause: TypedContractMethod<[], [void], "nonpayable">;
+
+  updateSwapFee: TypedContractMethod<
+    [newFee: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  userSwaps: TypedContractMethod<
+    [arg0: AddressLike, arg1: BigNumberish],
+    [bigint],
+    "view"
+  >;
 
   withdrawFees: TypedContractMethod<[], [void], "nonpayable">;
 
@@ -504,32 +634,32 @@ export interface SwapContract extends BaseContract {
     nameOrSignature: "MAX_SLIPPAGE"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "convertOraclePrice"
+    nameOrSignature: "completeSwap"
   ): TypedContractMethod<
-    [rawPrice: BigNumberish, assetDecimals: BigNumberish],
-    [bigint],
-    "view"
+    [swapId: BigNumberish, outputAmount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "emergencyWithdraw"
+  ): TypedContractMethod<
+    [token: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
   >;
   getFunction(
     nameOrSignature: "executeSwap"
   ): TypedContractMethod<
     [
       fromToken: BigNumberish,
-      targetToken: BigNumberish,
-      inputAmount: BigNumberish,
+      toToken: BigNumberish,
+      fromAmount: BigNumberish,
       minOutputAmount: BigNumberish,
-      fromOracleIndex: BigNumberish,
-      targetOracleIndex: BigNumberish
+      slippageBps: BigNumberish,
+      fromTokenAddress: AddressLike
     ],
-    [void],
+    [bigint],
     "payable"
-  >;
-  getFunction(
-    nameOrSignature: "getContractSpotBalance"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish],
-    [[bigint, bigint] & { total: bigint; hold: bigint }],
-    "view"
   >;
   getFunction(
     nameOrSignature: "getOraclePrice"
@@ -538,8 +668,25 @@ export interface SwapContract extends BaseContract {
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
-    nameOrSignature: "getSystemAddress"
-  ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+    nameOrSignature: "getSpotBalance"
+  ): TypedContractMethod<
+    [user: AddressLike, token: BigNumberish],
+    [bigint],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getSwap"
+  ): TypedContractMethod<
+    [swapId: BigNumberish],
+    [SwapContract.SwapRequestStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getTokenSystemAddress"
+  ): TypedContractMethod<[tokenIndex: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "getUserSwaps"
+  ): TypedContractMethod<[user: AddressLike], [bigint[]], "view">;
   getFunction(
     nameOrSignature: "grantRole"
   ): TypedContractMethod<
@@ -554,6 +701,9 @@ export interface SwapContract extends BaseContract {
     [boolean],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "nextSwapId"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "pause"
   ): TypedContractMethod<[], [void], "nonpayable">;
@@ -575,15 +725,8 @@ export interface SwapContract extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "setSwapFee"
-  ): TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setTokenContract"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish, contractAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    nameOrSignature: "sendHypeToSystem"
+  ): TypedContractMethod<[], [void], "payable">;
   getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
@@ -591,15 +734,54 @@ export interface SwapContract extends BaseContract {
     nameOrSignature: "swapFee"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "tokenContracts"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: "swapRequests"
+  ): TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [string, bigint, bigint, bigint, bigint, bigint, bigint, boolean] & {
+        user: string;
+        fromToken: bigint;
+        toToken: bigint;
+        fromAmount: bigint;
+        minOutputAmount: bigint;
+        slippageBps: bigint;
+        timestamp: bigint;
+        completed: boolean;
+      }
+    ],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "unpause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
+    nameOrSignature: "updateSwapFee"
+  ): TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "userSwaps"
+  ): TypedContractMethod<
+    [arg0: AddressLike, arg1: BigNumberish],
+    [bigint],
+    "view"
+  >;
+  getFunction(
     nameOrSignature: "withdrawFees"
   ): TypedContractMethod<[], [void], "nonpayable">;
 
+  getEvent(
+    key: "FeeUpdated"
+  ): TypedContractEvent<
+    FeeUpdatedEvent.InputTuple,
+    FeeUpdatedEvent.OutputTuple,
+    FeeUpdatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "HypeSystemTransfer"
+  ): TypedContractEvent<
+    HypeSystemTransferEvent.InputTuple,
+    HypeSystemTransferEvent.OutputTuple,
+    HypeSystemTransferEvent.OutputObject
+  >;
   getEvent(
     key: "Paused"
   ): TypedContractEvent<
@@ -629,18 +811,18 @@ export interface SwapContract extends BaseContract {
     RoleRevokedEvent.OutputObject
   >;
   getEvent(
-    key: "SwapExecuted"
+    key: "SwapCompleted"
   ): TypedContractEvent<
-    SwapExecutedEvent.InputTuple,
-    SwapExecutedEvent.OutputTuple,
-    SwapExecutedEvent.OutputObject
+    SwapCompletedEvent.InputTuple,
+    SwapCompletedEvent.OutputTuple,
+    SwapCompletedEvent.OutputObject
   >;
   getEvent(
-    key: "SwapFailed"
+    key: "SwapInitiated"
   ): TypedContractEvent<
-    SwapFailedEvent.InputTuple,
-    SwapFailedEvent.OutputTuple,
-    SwapFailedEvent.OutputObject
+    SwapInitiatedEvent.InputTuple,
+    SwapInitiatedEvent.OutputTuple,
+    SwapInitiatedEvent.OutputObject
   >;
   getEvent(
     key: "Unpaused"
@@ -651,6 +833,28 @@ export interface SwapContract extends BaseContract {
   >;
 
   filters: {
+    "FeeUpdated(uint256)": TypedContractEvent<
+      FeeUpdatedEvent.InputTuple,
+      FeeUpdatedEvent.OutputTuple,
+      FeeUpdatedEvent.OutputObject
+    >;
+    FeeUpdated: TypedContractEvent<
+      FeeUpdatedEvent.InputTuple,
+      FeeUpdatedEvent.OutputTuple,
+      FeeUpdatedEvent.OutputObject
+    >;
+
+    "HypeSystemTransfer(address,uint256)": TypedContractEvent<
+      HypeSystemTransferEvent.InputTuple,
+      HypeSystemTransferEvent.OutputTuple,
+      HypeSystemTransferEvent.OutputObject
+    >;
+    HypeSystemTransfer: TypedContractEvent<
+      HypeSystemTransferEvent.InputTuple,
+      HypeSystemTransferEvent.OutputTuple,
+      HypeSystemTransferEvent.OutputObject
+    >;
+
     "Paused(address)": TypedContractEvent<
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
@@ -695,26 +899,26 @@ export interface SwapContract extends BaseContract {
       RoleRevokedEvent.OutputObject
     >;
 
-    "SwapExecuted(address,uint64,uint64,uint256,uint256,uint256)": TypedContractEvent<
-      SwapExecutedEvent.InputTuple,
-      SwapExecutedEvent.OutputTuple,
-      SwapExecutedEvent.OutputObject
+    "SwapCompleted(uint256,address,uint256)": TypedContractEvent<
+      SwapCompletedEvent.InputTuple,
+      SwapCompletedEvent.OutputTuple,
+      SwapCompletedEvent.OutputObject
     >;
-    SwapExecuted: TypedContractEvent<
-      SwapExecutedEvent.InputTuple,
-      SwapExecutedEvent.OutputTuple,
-      SwapExecutedEvent.OutputObject
+    SwapCompleted: TypedContractEvent<
+      SwapCompletedEvent.InputTuple,
+      SwapCompletedEvent.OutputTuple,
+      SwapCompletedEvent.OutputObject
     >;
 
-    "SwapFailed(address,uint64,uint64,uint256,string)": TypedContractEvent<
-      SwapFailedEvent.InputTuple,
-      SwapFailedEvent.OutputTuple,
-      SwapFailedEvent.OutputObject
+    "SwapInitiated(uint256,address,uint64,uint64,uint256,uint256)": TypedContractEvent<
+      SwapInitiatedEvent.InputTuple,
+      SwapInitiatedEvent.OutputTuple,
+      SwapInitiatedEvent.OutputObject
     >;
-    SwapFailed: TypedContractEvent<
-      SwapFailedEvent.InputTuple,
-      SwapFailedEvent.OutputTuple,
-      SwapFailedEvent.OutputObject
+    SwapInitiated: TypedContractEvent<
+      SwapInitiatedEvent.InputTuple,
+      SwapInitiatedEvent.OutputTuple,
+      SwapInitiatedEvent.OutputObject
     >;
 
     "Unpaused(address)": TypedContractEvent<

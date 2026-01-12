@@ -1,0 +1,55 @@
+{
+  "name": "@hyper-trigger/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react-query": {
+      "types": "./dist/react-query.d.ts",
+      "import": "./dist/react-query.js",
+      "require": "./dist/react-query.cjs"
+    },
+    "./vanilla": {
+      "types": "./dist/vanilla.d.ts",
+      "import": "./dist/vanilla.js",
+      "require": "./dist/vanilla.cjs"
+    }
+  },
+  "scripts": {
+    "generate": "orval --config ../../orval.config.ts",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist src/generated",
+    "lint": "eslint src --ext .ts --fix --ignore-pattern 'src/generated/**' --ignore-pattern 'src/vanilla/**'",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "orval": "^6.24.0",
+    "prettier": "^3.1.1",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}
+

@@ -1,325 +1,586 @@
-import Link from 'next/link'
-import { TradingLayout } from '@/components/layout/TradingLayout'
-import { Button } from '@/components/ui/button'
-import { AnimatedGrid } from '@/components/ui/animated-grid'
-import { Typewriter } from '@/components/ui/typewriter'
+'use client'
+
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { formatUnits } from 'viem'
+import { TriggerBuilder } from '@/components/triggers/TriggerBuilder'
+import { HyperliquidChart, TriggerLine } from '@/components/chart/HyperliquidChart'
+import { OrderBook } from '@/components/chart/OrderBook'
+import { ChevronDown, Loader2, TrendingUp, TrendingDown } from 'lucide-react'
+import { TokenIcon } from '@/components/ui/token-icon'
+import { TokenModal } from '@/components/ui/token-select'
+import { usePriceContext } from '@/contexts/PriceContext'
+import { getTriggerableTokens, getDefaultToken, sortTokensByImportance, getDisplayName } from '@hyper-trigger/shared/tokens'
+import { useUserActiveTriggers, useTriggerContract, Trigger, TriggerStatus } from '@/hooks/useTriggerContract'
+import { usePublicClient } from 'wagmi'
+import { useBridge } from '@/hooks/useBridge'
+import { toast } from 'sonner'
+import { formatErrorMessage, isUserRejection } from '@/lib/errors'
 
 export default function HomePage() {
+  const defaultToken = getDefaultToken()
+  // Default to BTC (UBTC) for consistent initial load
+  const [watchToken, setWatchToken] = useState('UBTC')
+  const [showTokenModal, setShowTokenModal] = useState(false)
+  const [interval, setInterval] = useState('60')
+  const [cancellingId, setCancellingId] = useState<number | null>(null)
+  
+  // Use the SAME token list as TriggerBuilder
+  const tokens = useMemo(() => sortTokensByImportance(getTriggerableTokens()), [])
+  const currentToken = tokens.find(t => t.symbol === watchToken) || defaultToken
+  
+  // Use the SAME price context as everywhere else
+  const { prices } = usePriceContext()
+  const priceData = prices[watchToken]
+  
+  // Fetch user's active triggers from contract
+  const { data: activeTriggers, refetch: refetchTriggers } = useUserActiveTriggers()
+  const { cancelTrigger, createTrigger, updateTriggerPrice } = useTriggerContract()
+  
+  // Get spot balances for Account Equity section
+  const { spotBalances, isLoadingBalances, fetchSpotBalances: refetchBalances } = useBridge()
+  
+  // Calculate total spot equity value
+  const totalSpotValue = useMemo(() => {
+    if (!spotBalances.length) return 0
+    return spotBalances.reduce((total, balance) => {
+      const tokenPrice = prices[balance.symbol]?.price || (balance.symbol === 'USDC' ? 1 : 0)
+      return total + parseFloat(balance.total) * tokenPrice
+    }, 0)
+  }, [spotBalances, prices])
+  
+  // Filter triggers for the current watch token
+  const triggersForChart = useMemo((): TriggerLine[] => {
+    if (!activeTriggers) return []
+    return (activeTriggers as Trigger[])
+      .filter(t => t.watchAsset === watchToken)
+      .map(t => ({
+        id: Number(t.id),
+        price: Number(formatUnits(t.targetPrice, 6)),
+        isAbove: t.isAbove,
+        label: `${t.isAbove ? '↑' : '↓'} ${t.tradeAsset}`,
+      }))
+  }, [activeTriggers, watchToken])
+  
+  // All active triggers for the list
+  const allTriggers = useMemo(() => {
+    if (!activeTriggers) return []
+    return (activeTriggers as Trigger[]).map(t => ({
+      id: Number(t.id),
+      watchAsset: t.watchAsset,
+      targetPrice: Number(formatUnits(t.targetPrice, 6)),
+      isAbove: t.isAbove,
+      tradeAsset: t.tradeAsset,
+      isBuy: t.isBuy,
+      amount: t.isBuy ? formatUnits(t.amount, 6) : formatUnits(t.amount, 18),
+      maxSlippage: Number(t.maxSlippage),
+    }))
+  }, [activeTriggers])
+  
+  // Calculate what's committed to active triggers (in USD value)
+  const committedToTriggers = useMemo(() => {
+    if (!allTriggers.length) return { usdc: 0, tokens: new Map<string, number>() }
+    
+    let usdcCommitted = 0
+    const tokenAmounts = new Map<string, number>()
+    
+    allTriggers.forEach(trigger => {
+      if (trigger.isBuy) {
+        // For buys, USDC is committed
+        usdcCommitted += parseFloat(trigger.amount)
+      } else {
+        // For sells, the token is committed
+        const currentAmount = tokenAmounts.get(trigger.tradeAsset) || 0
+        tokenAmounts.set(trigger.tradeAsset, currentAmount + parseFloat(trigger.amount))
+      }
+    })
+    
+    return { usdc: usdcCommitted, tokens: tokenAmounts }
+  }, [allTriggers])
+  
+  // Calculate total committed value in USD
+  const totalCommittedValue = useMemo(() => {
+    let total = committedToTriggers.usdc // USDC is 1:1
+    
+    committedToTriggers.tokens.forEach((amount, symbol) => {
+      const tokenPrice = prices[symbol]?.price || 0
+      total += amount * tokenPrice
+    })
+    
+    return total
+  }, [committedToTriggers, prices])
+  
+  // Track previous triggers to detect executions
+  const prevTriggersRef = useRef<Map<number, { tradeAsset: string; isBuy: boolean; amount: string }>>(new Map())
+  const publicClient = usePublicClient()
+  
+  // Detect when triggers get executed (removed from active list without user cancelling)
+  useEffect(() => {
+    if (!activeTriggers || !publicClient) return
+    
+    const currentIds = new Set(allTriggers.map(t => t.id))
+    const prevTriggers = prevTriggersRef.current
+    
+    // Check for triggers that disappeared (not cancelled by user)
+    prevTriggers.forEach(async (trigger, id) => {
+      if (!currentIds.has(id) && cancellingId !== id) {
+        // Trigger disappeared - check on-chain status to confirm execution
+        try {
+          const TRIGGER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_TRIGGER_CONTRACT_ADDRESS as `0x${string}`
+          const TRIGGER_ABI = [
+            {
+              type: 'function',
+              name: 'getTrigger',
+              inputs: [{ name: 'triggerId', type: 'uint256' }],
+              outputs: [
+                {
+                  type: 'tuple',
+                  components: [
+                    { name: 'status', type: 'uint8' },
+                    { name: 'executedAt', type: 'uint256' },
+                  ],
+                },
+              ],
+              stateMutability: 'view',
+            },
+          ] as const
+          
+          const result = await publicClient.readContract({
+            address: TRIGGER_CONTRACT_ADDRESS,
+            abi: TRIGGER_ABI,
+            functionName: 'getTrigger',
+            args: [BigInt(id)],
+          }) as { status: number; executedAt: bigint }
+          
+          // Only show success if status is Executed (1)
+          if (result.status === TriggerStatus.Executed && result.executedAt > BigInt(0)) {
+            const action = trigger.isBuy ? 'Bought' : 'Sold'
+            const amount = parseFloat(trigger.amount).toFixed(4)
+            toast.success(
+              `Trigger executed: ${action} ${amount} ${getDisplayName(trigger.tradeAsset)}`,
+              { duration: 5000 }
+            )
+            refetchBalances()
+          } else {
+            // Trigger was cancelled/expired/failed - no notification needed
+            refetchBalances()
+          }
+        } catch (error) {
+          // Failed to check status - just refetch balance silently
+          refetchBalances()
+        }
+      }
+    })
+    
+    // Update previous triggers map
+    const newMap = new Map<number, { tradeAsset: string; isBuy: boolean; amount: string }>()
+    allTriggers.forEach(t => {
+      newMap.set(t.id, { tradeAsset: t.tradeAsset, isBuy: t.isBuy, amount: t.amount })
+    })
+    prevTriggersRef.current = newMap
+  }, [allTriggers, cancellingId, refetchBalances, publicClient])
+  
+  // Handle trigger cancellation
+  const handleCancelTrigger = useCallback(async (triggerId: number) => {
+    setCancellingId(triggerId)
+    try {
+      const hash = await cancelTrigger(triggerId)
+      if (hash) {
+        toast.success('Trigger cancelled! Waiting for confirmation...')
+        // Refetch multiple times as chain confirms
+        setTimeout(() => { refetchTriggers(); refetchBalances() }, 500)
+        setTimeout(() => { refetchTriggers(); refetchBalances() }, 2000)
+        setTimeout(() => { refetchTriggers(); refetchBalances() }, 4000)
+      }
+    } catch (err) {
+      if (!isUserRejection(err)) {
+        toast.error(formatErrorMessage(err))
+      }
+    } finally {
+      setCancellingId(null)
+    }
+  }, [cancelTrigger, refetchTriggers, refetchBalances])
+  
+  // Handle trigger line drag (single atomic transaction to update price)
+  const handleTriggerDrag = useCallback(async (triggerId: number, newPrice: number) => {
+    const trigger = allTriggers.find(t => t.id === triggerId)
+    if (!trigger) return
+    
+    try {
+      // Keep the original direction (isAbove) - don't auto-switch
+      await updateTriggerPrice(triggerId, newPrice, trigger.isAbove)
+      
+      toast.success(`Trigger updated to $${newPrice.toFixed(2)}`)
+      setTimeout(() => {
+        refetchTriggers()
+        refetchBalances()
+      }, 2000)
+    } catch (err) {
+      if (!isUserRejection(err)) {
+        toast.error(formatErrorMessage(err))
+      }
+      refetchTriggers() // Refetch to reset the UI
+    }
+  }, [allTriggers, prices, updateTriggerPrice, refetchTriggers, refetchBalances])
+  
+  // Convert prices to simple Record<string, number> for TokenModal
+  const pricesMap = useMemo(() => {
+    const p: Record<string, number> = {}
+    Object.entries(prices).forEach(([symbol, data]) => {
+      p[symbol] = data.price
+    })
+    return p
+  }, [prices])
+  
+  const formatPrice = (price: number) => {
+    if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    if (price >= 1) return price.toFixed(2)
+    return price.toFixed(4)
+  }
+  
+  const getDisplayName = (symbol: string) => {
+    if (symbol.startsWith('U') && symbol !== 'USDC') {
+      return symbol.slice(1)
+    }
+    return symbol
+  }
+  
   return (
-    <TradingLayout>
-      {/* Hero Section with Animated Technical Background */}
-      <section className="relative min-h-[79vh] flex items-center justify-center overflow-hidden">
-        {/* Animated Grid Background */}
-        <AnimatedGrid />
-
-        <div className="relative z-10 wrapper mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Main content */}
-            <div className="space-y-8 relative">
-              <div className="space-y-6 z-10 relative">
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light leading-none">
-                  <Typewriter 
-                    text="Cross-Asset" 
-                    delay={0.5}
-                    speed={0.1}
-                    className="text-foreground font-light"
-                  />
-                  <br />
-                  <Typewriter 
-                    text="Triggered" 
-                    delay={1.5}
-                    speed={0.08}
-                    className="text-primary font-light italic"
-                  />
-                  <br />
-                  <Typewriter 
-                    text="Trading" 
-                    delay={2.8}
-                    speed={0.1}
-                    className="text-foreground font-light"
-                  />
-                </h1>
-                
-                <div className="pt-8">
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="border-white/20 hover:border-white/40 bg-transparent text-white font-mono text-sm px-8 py-3"
-                    asChild
+    <div className="h-full flex flex-col lg:flex-row gap-1 p-1 overflow-hidden">
+      {/* Left Panel - Chart + Active Triggers */}
+      <div className="flex flex-col min-w-0 flex-1 min-h-0">
+        {/* Token Info Bar */}
+        <div className="px-3 py-2 mb-1 flex items-center gap-10 shrink-0 bg-card border border-border rounded-xl overflow-x-auto">
+          {/* Token Selector */}
+          <button
+            onClick={() => setShowTokenModal(true)}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
+          >
+            <TokenIcon symbol={watchToken} size="md" />
+            <span className="font-semibold text-foreground text-base">{currentToken.displayName}/USDC</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          </button>
+          
+          {/* Spot Badge */}
+          <span className="px-2.5 py-1 text-xs font-medium bg-primary/20 text-primary rounded-md shrink-0">
+            Spot
+          </span>
+          
+          {/* Stats - always render with fixed height to prevent flicker */}
+          {/* Price */}
+          <div className="flex flex-col shrink-0 h-8 justify-center">
+            <span className="text-[10px] text-muted-foreground leading-none">Price</span>
+            <span className="text-xs font-semibold text-foreground tabular-nums leading-tight">
+              {priceData ? formatPrice(priceData.price) : '—'}
+            </span>
+          </div>
+          
+          {/* 24H Change */}
+          <div className="flex flex-col shrink-0 h-8 justify-center">
+            <span className="text-[10px] text-muted-foreground leading-none">24H Change</span>
+            <span className={`text-xs font-semibold tabular-nums leading-tight ${
+              priceData && (priceData.change24h ?? 0) >= 0 ? 'text-primary' : 'text-destructive'
+            }`}>
+              {priceData ? `${(priceData.change24h ?? 0) >= 0 ? '+' : ''}${(((priceData.change24h ?? 0) / (priceData.price - (priceData.change24h ?? 0))) * 100).toFixed(2)}%` : '—'}
+            </span>
+          </div>
+          
+          {/* 24H Volume */}
+          <div className="flex flex-col shrink-0 h-8 justify-center">
+            <span className="text-[10px] text-muted-foreground leading-none">24H Volume</span>
+            <span className="text-xs font-semibold text-foreground tabular-nums leading-tight">
+              {priceData ? `${(priceData.volume24h ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}
+            </span>
+          </div>
+          
+          {/* Spacer */}
+          <div className="flex-1" />
+          
+          {/* Interval Selector */}
+          <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5 shrink-0">
+            {[
+              { label: '1m', value: '1' },
+              { label: '5m', value: '5' },
+              { label: '15m', value: '15' },
+              { label: '1H', value: '60' },
+              { label: '4H', value: '240' },
+              { label: '1D', value: 'D' },
+            ].map(int => (
+              <button
+                key={int.value}
+                onClick={() => setInterval(int.value)}
+                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                  interval === int.value 
+                    ? 'bg-card text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {int.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Token Modal */}
+        <TokenModal
+          isOpen={showTokenModal}
+          onClose={() => setShowTokenModal(false)}
+          onSelect={setWatchToken}
+          tokens={tokens}
+          prices={pricesMap}
+          title="Select Token"
+        />
+        
+        {/* Chart + OrderBook */}
+        <div className="flex-1 min-h-[200px] flex gap-1">
+          {/* Chart */}
+          <div className="flex-1 min-w-0 bg-card border border-border rounded-xl overflow-hidden">
+            <HyperliquidChart 
+              symbol={watchToken} 
+              interval={interval}
+              triggers={triggersForChart}
+              onTriggerDrag={handleTriggerDrag}
+            />
+          </div>
+          
+          {/* OrderBook */}
+          <div className="w-[240px] shrink-0 hidden lg:block bg-card border border-border rounded-xl overflow-hidden">
+            <OrderBook symbol={watchToken} />
+          </div>
+        </div>
+        
+        {/* Active Triggers Table */}
+        <div className="shrink-0 mt-1 bg-card border border-border rounded-xl overflow-hidden min-h-[180px] flex flex-col">
+          {/* Header */}
+          <div className="px-4 py-2 border-b border-border">
+            <span className="text-xs font-medium text-foreground">Active Triggers</span>
+            {allTriggers.length > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground">({allTriggers.length})</span>
+            )}
+          </div>
+          
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="text-left px-4 py-2.5 font-medium">Time</th>
+                <th className="text-left px-4 py-2.5 font-medium">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium">When</th>
+                <th className="text-left px-4 py-2.5 font-medium">Trade</th>
+                <th className="text-left px-4 py-2.5 font-medium">Side</th>
+                <th className="text-left px-4 py-2.5 font-medium">Size</th>
+                <th className="text-right px-4 py-2.5 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {allTriggers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-xs text-muted-foreground">
+                    No active triggers
+                  </td>
+                </tr>
+              ) : (
+                allTriggers.map(trigger => (
+                  <tr 
+                    key={trigger.id}
+                    onClick={() => setWatchToken(trigger.watchAsset)}
+                    className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
                   >
-                    <Link href="/triggers">
-                      START TRIGGERING →
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            <div className="bg-background/70 z-0 blur-[100px] absolute -inset-20"/>
-            </div>
+                    {/* Time */}
+                    <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                      {new Date().toLocaleDateString()} 
+                    </td>
+                    
+                    {/* Type */}
+                    <td className="px-4 py-2.5 text-foreground">
+                      Spot
+                    </td>
+                    
+                    {/* When (Watch Asset + Direction + Price) */}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <TokenIcon symbol={trigger.watchAsset} size="sm" />
+                        <span className="text-foreground">{getDisplayName(trigger.watchAsset)}</span>
+                        <span className={`inline-flex items-center ${
+                          trigger.isAbove ? 'text-primary' : 'text-destructive'
+                        }`}>
+                          {trigger.isAbove ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3" />
+                          )}
+                        </span>
+                        <span className="text-muted-foreground">${trigger.targetPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </td>
+                    
+                    {/* Trade Asset */}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <TokenIcon symbol={trigger.tradeAsset} size="sm" />
+                        <span className="text-foreground">{getDisplayName(trigger.tradeAsset)}</span>
+                      </div>
+                    </td>
+                    
+                    {/* Side (Buy/Sell) */}
+                    <td className="px-4 py-2.5">
+                      <span className={trigger.isBuy ? 'text-primary' : 'text-destructive'}>
+                        {trigger.isBuy ? 'Buy' : 'Sell'}
+                      </span>
+                    </td>
+                    
+                    {/* Size */}
+                    <td className="px-4 py-2.5 text-foreground tabular-nums">
+                      {parseFloat(trigger.amount).toFixed(4)}
+                    </td>
+                    
+                    {/* Cancel */}
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleCancelTrigger(trigger.id) }}
+                        disabled={cancellingId !== null}
+                        className="w-14 text-destructive hover:text-destructive/80 text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center ml-auto"
+                      >
+                        {cancellingId === trigger.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          'Cancel'
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      {/* Right Panel */}
+      <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-1 overflow-hidden">
+        {/* Spot/Perps Tabs Card */}
+        <div className="flex bg-card border border-border rounded-xl overflow-hidden shrink-0">
+          <button
+            className="flex-1 px-4 py-3.5 text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: 'rgba(74, 222, 128, 0.2)',
+              color: '#4ade80'
+            }}
+          >
+            Spot
+          </button>
+          <button
+            disabled
+            className="flex-1 px-4 py-3.5 text-sm font-medium text-muted-foreground/40 cursor-not-allowed"
+            title="Coming soon"
+          >
+            Perps
+          </button>
+        </div>
+        
+        {/* Trigger Builder Card */}
+        <div className="flex flex-col overflow-hidden bg-card border border-border rounded-xl shrink-0">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TriggerBuilder 
+              watchToken={watchToken} 
+              onWatchTokenChange={setWatchToken}
+              onTriggerCreated={() => {
+                refetchTriggers()
+                refetchBalances()
+              }}
+            />
           </div>
         </div>
-
-        {/* Bottom indicator */}
-        <div className="absolute bottom-8 right-8 text-xs text-gray-500 font-mono">
-          <Typewriter 
-            text="/// BUY FARTCOIN WHEN BTC HITS $100,000." 
-            delay={8.0}
-            speed={0.02}
-          />
-        </div>
-      </section>
-
-      {/* Technical Stats */}
-      <section className="py-32 border-t border-white/10 relative overflow-hidden">
-        {/* Vertical Lines Background Pattern */}
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 2px,
-              rgba(255,255,255,0.1) 2px,
-              rgba(255,255,255,0.1) 3px
-            )`,
-            backgroundSize: '60px 100%'
-          }}
-        />
         
-        <div className="wrapper mx-auto relative z-10">
-          <div className="flex justify-between items-center mb-16">
-            <div className="text-xs text-gray-500 font-mono">[ TRIGGERS ]</div>
-            <div className="text-xs text-gray-500 font-mono tracking-wider">PROTOCOL METRICS</div>
+        {/* Account Equity Card */}
+        <div className="flex-1 bg-card border border-border rounded-xl p-3 space-y-2 overflow-y-auto">
+          <div className="text-xs font-medium text-foreground">Account Equity</div>
+          
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Spot Balance</span>
+              <span className="text-xs font-medium text-foreground">
+                {isLoadingBalances ? '—' : `$${totalSpotValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </span>
+            </div>
+            {allTriggers.length > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">In Triggers</span>
+                  <span className="text-xs text-muted-foreground">
+                    −${totalCommittedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/30">
+                  <span className="text-xs text-muted-foreground">Available</span>
+                  <span className="text-xs font-medium text-foreground">
+                    ${Math.max(0, totalSpotValue - totalCommittedValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground line-through opacity-50">Perps</span>
+              <span className="text-xs text-muted-foreground/50">$0.00</span>
+            </div>
           </div>
           
-          {/* Large hero metric */}
-          <div className="mb-20">
-            <div className="text-8xl md:text-9xl font-mono font-light tracking-tight text-white">
-              000,000,000
-            </div>
-          </div>
-
-          {/* Supporting metrics grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-            <div>
-              <div className="text-xs text-gray-500 font-mono mb-4 tracking-wider">
-                VALUE<br />IN TRIGGERS
-              </div>
-              <div className="text-4xl md:text-5xl font-mono font-light tracking-tight">
-                $1M+
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-xs text-gray-500 font-mono mb-4 tracking-wider">
-                TOKENS<br />SUPPORTED
-              </div>
-              <div className="text-4xl md:text-5xl font-mono font-light tracking-tight">
-                100+
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-xs text-gray-500 font-mono mb-4 tracking-wider">
-                MOST POPULAR<br />TRIGGER
-              </div>
-              <div className="text-4xl md:text-5xl font-mono font-light tracking-tight">
-                BTC_BREAKOUT
+          {/* Committed Breakdown */}
+          {allTriggers.length > 0 && (
+            <div className="pt-1.5 border-t border-border/30">
+              <div className="text-[10px] text-muted-foreground/70 mb-1">Trigger Allocations</div>
+              <div className="space-y-0.5">
+                {committedToTriggers.usdc > 0 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <TokenIcon symbol="USDC" size="xs" />
+                      <span className="text-[10px] text-muted-foreground/70">USDC</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                      {committedToTriggers.usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+                {Array.from(committedToTriggers.tokens.entries()).map(([symbol, amount]) => (
+                  <div key={symbol} className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <TokenIcon symbol={symbol} size="xs" />
+                      <span className="text-[10px] text-muted-foreground/70">{getDisplayName(symbol)}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                      {amount.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <section className="py-20 border-y border-border">
-        <div className="wrapper mx-auto">
-          <div className="flex justify-between items-center mb-16">
-            <div className="text-xs text-gray-500 font-mono">[ ? ]</div>
-            <div className="text-xs text-gray-500 font-mono tracking-wider">FEATURES</div>
-          </div>
+          )}
           
-          <div className="mb-16">
-            <h2 className="text-4xl font-light">Why HyperTrigger?</h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-xs text-gray-500 font-mono">A /</div>
-                <div className="w-8 h-8 rounded border border-white/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
+          <div className="pt-2 border-t border-border/50">
+            <div className="text-sm font-medium text-muted-foreground/50 mb-2">Perps Overview</div>
+            <div className="space-y-1.5 text-muted-foreground/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs line-through">Balance</span>
+                <span className="text-xs">$0.00</span>
               </div>
-              <h3 className="text-xl font-light">INSTANT SETUP</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Create price-based triggers in seconds with our intuitive interface. 
-                Set precise thresholds and execute trades automatically when 
-                market conditions are met.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-xs text-gray-500 font-mono">B /</div>
-                <div className="w-8 h-8 rounded border border-white/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Unrealized PNL</span>
+                <span className="text-xs">$0.00</span>
               </div>
-              <h3 className="text-xl font-light">UNIFIED SECURITY</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Multi-oracle validation with MEV protection ensures reliable execution. 
-                Built-in slippage control and emergency safeguards protect your trades 
-                across all market conditions.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-xs text-gray-500 font-mono">C /</div>
-                <div className="w-8 h-8 rounded border border-white/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs line-through">Cross Margin Ratio</span>
+                <span className="text-xs text-primary/40">0.00%</span>
               </div>
-              <h3 className="text-xl font-light">CUSTOM EXECUTION</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Configure execution parameters to match your strategy. 
-                Set custom slippage tolerance, gas limits, and timing preferences 
-                for optimal trade execution.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-xs text-gray-500 font-mono">D /</div>
-                <div className="w-8 h-8 rounded border border-white/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs line-through">Maintenance Margin</span>
+                <span className="text-xs">$0.00</span>
               </div>
-              <h3 className="text-xl font-light">COST-EFFECTIVE</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Pay-as-you-execute model with ultra-low fees on HyperEVM. 
-                No subscription costs, only minimal execution fees when 
-                your triggers activate successfully.
-              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs line-through">Cross Account Leverage</span>
+                <span className="text-xs">0.00x</span>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Popular Strategies - Minimal */}
-      <section className="py-20 border-t relative border-white/10">
-        <div className="wrapper mx-auto relative z-10">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="border border-white/10 p-8 bg-background relative">
-              <div className="absolute top-6 right-6 text-xs text-gray-500 font-mono">/ 01</div>
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-light mb-4">Any Price</h3>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Trigger trades based on any asset price from BTC, ETH, to memecoins. 
-                Set precise thresholds with multi-oracle validation for reliable execution.
-              </p>
-            </div>
-
-            <div className="border border-white/10 p-8 bg-background relative">
-              <div className="absolute top-6 right-6 text-xs text-gray-500 font-mono">/ 02</div>
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-light mb-4">Any Token</h3>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Execute swaps on any HyperEVM / Hyperliquid exchange token across HyperEVM. 
-                From blue chips to emerging assets, create triggers with unified liquidity and optimal routing powered by HyperEVM.
-              </p>
-            </div>
-
-            <div className="border border-white/10 p-8 bg-background relative">
-              <div className="absolute top-6 right-6 text-xs text-gray-500 font-mono">/ 03</div>
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-light mb-4">Any Time</h3>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                24/7 automated execution with sub-second latency. 
-                Never miss market opportunities with continuous monitoring and instant trade execution.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 2px,
-              rgba(255,255,255,0.1) 2px,
-              rgba(255,255,255,0.1) 3px
-            )`,
-            backgroundSize: '60px 100%'
-          }}
-        />
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="py-[78px] border-t border-white/10 relative overflow-hidden">
-        {/* Animated Grid Background */}
-        <AnimatedGrid />
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="space-y-8 relative z-10">
-            <h2 className="text-3xl font-light">Ready to automate?</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Join traders executing perfect entries and exits, 24/7.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="border-white/20 hover:border-white/40 bg-transparent text-white font-mono text-sm px-8 py-3"
-                asChild
-              >
-                <Link href="/triggers">
-                  CREATE TRIGGER →
-                </Link>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="lg" 
-                className="text-gray-400 hover:text-white font-mono text-sm px-8 py-3"
-                asChild
-              >
-                <Link href="/dashboard">
-                  VIEW DASHBOARD
-                </Link>
-              </Button>
-            </div>
-          </div>
-          <div className="bg-background/70 z-0 blur-[30px] absolute -inset-10"/>
-        </div>
-      </section>
-    </TradingLayout>
+      </div>
+    </div>
   )
-} 
+}

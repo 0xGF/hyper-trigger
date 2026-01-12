@@ -13,7 +13,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1,
+        runs: 200, // Balance between deploy cost and runtime gas
       },
       viaIR: true,
     },
@@ -32,8 +32,7 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY !== 'your_private_key_here_without_0x_prefix' 
         ? [process.env.PRIVATE_KEY] 
         : [],
-      gasPrice: 'auto',
-      gasMultiplier: 1.2,
+      gasPrice: 1000000000, // 1 gwei fixed gas price
       gas: 30000000,
       blockGasLimit: 30000000,
     },

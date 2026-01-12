@@ -1,82 +1,57 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
-import { getTokenIcon } from '@/lib/token-icons'
+import { getTokenIcon, getTokenImageUrl } from '@/lib/token-icons'
 
 interface TokenIconProps {
   symbol: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
-  fallbackIcon?: string
 }
 
-export function TokenIcon({ symbol, size = 'md', className = '', fallbackIcon }: TokenIconProps) {
+export function TokenIcon({ symbol, size = 'md', className = '' }: TokenIconProps) {
   const [imageError, setImageError] = useState(false)
-  const [imageLoading, setImageLoading] = useState(true)
 
   const sizeClasses = {
-    sm: 'w-6 h-6 text-xs',
-    md: 'w-8 h-8 text-sm',
-    lg: 'w-12 h-12 text-base'
+    xs: 'w-4 h-4',
+    sm: 'w-6 h-6',
+    md: 'w-8 h-8',
+    lg: 'w-12 h-12'
   }
 
-  const tokenIcon = getTokenIcon(symbol)
-  const displayIcon = fallbackIcon || tokenIcon.emoji
-
-  // Try to load image from /public/tokens/ folder first
-  const imagePath = `/tokens/${symbol.toLowerCase()}.png`
-
-  const handleImageError = () => {
-    setImageError(true)
-    setImageLoading(false)
+  const textSizes = {
+    xs: 'text-[8px]',
+    sm: 'text-[10px]',
+    md: 'text-xs',
+    lg: 'text-sm'
   }
 
-  const handleImageLoad = () => {
-    setImageLoading(false)
-  }
+  const tokenStyle = getTokenIcon(symbol)
+  const imageUrl = getTokenImageUrl(symbol)
 
   return (
     <div 
       className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center border border-border/50 overflow-hidden relative`}
       style={{ 
-        backgroundColor: imageError ? tokenIcon.backgroundColor : 'transparent',
+        backgroundColor: imageError ? tokenStyle.backgroundColor : 'transparent',
       }}
     >
       {!imageError ? (
-        <>
-          <Image
-            src={imagePath}
-            alt={`${symbol} icon`}
-            width={size === 'sm' ? 24 : size === 'md' ? 32 : 48}
-            height={size === 'sm' ? 24 : size === 'md' ? 32 : 48}
-            className="rounded-full object-cover"
-            onError={handleImageError}
-            onLoad={handleImageLoad}
-            priority={false}
-          />
-          {imageLoading && (
-            <div 
-              className="absolute inset-0 rounded-full flex items-center justify-center"
-              style={{ 
-                backgroundColor: tokenIcon.backgroundColor,
-                color: tokenIcon.color 
-              }}
-            >
-              <span className="font-semibold text-xs">
-                {displayIcon}
-              </span>
-            </div>
-          )}
-        </>
+        <img
+          src={imageUrl}
+          alt={`${symbol} icon`}
+          className="w-full h-full rounded-full object-cover"
+          onError={() => setImageError(true)}
+          loading="lazy"
+        />
       ) : (
         <span 
-          className="font-semibold"
-          style={{ color: tokenIcon.color }}
+          className={`font-bold ${textSizes[size]} uppercase`}
+          style={{ color: tokenStyle.color }}
         >
-          {displayIcon}
+          {symbol.slice(0, 2)}
         </span>
       )}
     </div>
   )
-} 
+}

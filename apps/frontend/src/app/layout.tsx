@@ -1,8 +1,13 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
+import { Toaster } from 'sonner'
+import { Nav } from '@/components/layout/Nav'
 import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
+
+// Force dynamic rendering - app uses wallet state that requires localStorage
+export const dynamic = 'force-dynamic'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -42,9 +47,23 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <div id="root" className="min-h-screen bg-background">
-            {children}
+          <div id="root" className="h-screen flex flex-col bg-background overflow-hidden">
+            <Nav />
+            <main className="flex-1 min-h-0 overflow-hidden">
+              {children}
+            </main>
           </div>
+          <Toaster 
+            position="bottom-right" 
+            theme="dark"
+            toastOptions={{
+              style: {
+                background: 'var(--background)',
+                border: '1px solid var(--border)',
+                color: 'var(--foreground)',
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

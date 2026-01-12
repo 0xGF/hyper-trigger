@@ -140,6 +140,7 @@ lib/
 *.db
 *.sqlite
 *.sqlite3
+apps/api/data/
 
 # Local development
 .local/

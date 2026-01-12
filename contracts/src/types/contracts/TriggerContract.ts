@@ -27,44 +27,56 @@ export declare namespace TriggerContract {
   export type TriggerStruct = {
     id: BigNumberish;
     user: AddressLike;
-    targetOracleIndex: BigNumberish;
-    targetToken: BigNumberish;
-    usdcAmount: BigNumberish;
-    triggerPrice: BigNumberish;
+    watchAsset: string;
+    targetPrice: BigNumberish;
     isAbove: boolean;
+    tradeAsset: string;
+    isBuy: boolean;
+    amount: BigNumberish;
     maxSlippage: BigNumberish;
     createdAt: BigNumberish;
-    state: BigNumberish;
-    executionStarted: BigNumberish;
-    outputAmount: BigNumberish;
+    expiresAt: BigNumberish;
+    status: BigNumberish;
+    feePaid: BigNumberish;
+    executedAt: BigNumberish;
+    executionPrice: BigNumberish;
+    executionTxHash: BytesLike;
   };
 
   export type TriggerStructOutput = [
     id: bigint,
     user: string,
-    targetOracleIndex: bigint,
-    targetToken: bigint,
-    usdcAmount: bigint,
-    triggerPrice: bigint,
+    watchAsset: string,
+    targetPrice: bigint,
     isAbove: boolean,
+    tradeAsset: string,
+    isBuy: boolean,
+    amount: bigint,
     maxSlippage: bigint,
     createdAt: bigint,
-    state: bigint,
-    executionStarted: bigint,
-    outputAmount: bigint
+    expiresAt: bigint,
+    status: bigint,
+    feePaid: bigint,
+    executedAt: bigint,
+    executionPrice: bigint,
+    executionTxHash: string
   ] & {
     id: bigint;
     user: string;
-    targetOracleIndex: bigint;
-    targetToken: bigint;
-    usdcAmount: bigint;
-    triggerPrice: bigint;
+    watchAsset: string;
+    targetPrice: bigint;
     isAbove: boolean;
+    tradeAsset: string;
+    isBuy: boolean;
+    amount: bigint;
     maxSlippage: bigint;
     createdAt: bigint;
-    state: bigint;
-    executionStarted: bigint;
-    outputAmount: bigint;
+    expiresAt: bigint;
+    status: bigint;
+    feePaid: bigint;
+    executedAt: bigint;
+    executionPrice: bigint;
+    executionTxHash: string;
   };
 }
 
@@ -73,53 +85,48 @@ export interface TriggerContractInterface extends Interface {
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
       | "EXECUTOR_ROLE"
-      | "MAX_SLIPPAGE"
-      | "USDC_TOKEN_ID"
+      | "MAX_TRIGGER_DURATION"
+      | "MIN_TRIGGER_DURATION"
+      | "activeTriggerCount"
       | "cancelTrigger"
-      | "claimRefund"
-      | "completeTriggerExecution"
-      | "convertOraclePrice"
+      | "checkTrigger"
       | "createTrigger"
-      | "emergencyWithdraw"
-      | "executionReward"
-      | "getContractSpotBalance"
-      | "getOraclePrice"
+      | "getActiveTriggerCount"
       | "getRoleAdmin"
-      | "getSystemAddress"
       | "getTrigger"
+      | "getUserActiveTriggers"
       | "getUserTriggers"
       | "grantRole"
       | "hasRole"
-      | "isTriggerReady"
-      | "markExecutionFailed"
+      | "markExecuted"
+      | "markExpired"
+      | "markFailed"
       | "nextTriggerId"
       | "pause"
       | "paused"
       | "renounceRole"
       | "revokeRole"
-      | "setExecutionReward"
-      | "setTokenContract"
-      | "startTriggerExecution"
       | "supportsInterface"
-      | "tokenContracts"
+      | "triggerFee"
       | "triggers"
       | "unpause"
+      | "updateTriggerFee"
       | "userTriggers"
-      | "userUsdcDeposits"
+      | "withdrawFees"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "FeeUpdated"
       | "Paused"
-      | "RefundClaimed"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
       | "TriggerCancelled"
       | "TriggerCreated"
       | "TriggerExecuted"
-      | "TriggerExecutionFailed"
-      | "TriggerExecutionStarted"
+      | "TriggerExpired"
+      | "TriggerFailed"
       | "Unpaused"
   ): EventFragment;
 
@@ -132,11 +139,15 @@ export interface TriggerContractInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "MAX_SLIPPAGE",
+    functionFragment: "MAX_TRIGGER_DURATION",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "USDC_TOKEN_ID",
+    functionFragment: "MIN_TRIGGER_DURATION",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "activeTriggerCount",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -144,55 +155,37 @@ export interface TriggerContractInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "claimRefund",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "completeTriggerExecution",
-    values: [BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "convertOraclePrice",
+    functionFragment: "checkTrigger",
     values: [BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "createTrigger",
     values: [
-      BigNumberish,
-      BigNumberish,
-      BigNumberish,
+      string,
       BigNumberish,
       boolean,
+      string,
+      boolean,
+      BigNumberish,
+      BigNumberish,
       BigNumberish
     ]
   ): string;
   encodeFunctionData(
-    functionFragment: "emergencyWithdraw",
-    values: [BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "executionReward",
+    functionFragment: "getActiveTriggerCount",
     values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getContractSpotBalance",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getOraclePrice",
-    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
     values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "getSystemAddress",
+    functionFragment: "getTrigger",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "getTrigger",
-    values: [BigNumberish]
+    functionFragment: "getUserActiveTriggers",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getUserTriggers",
@@ -207,11 +200,15 @@ export interface TriggerContractInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "isTriggerReady",
-    values: [BigNumberish]
+    functionFragment: "markExecuted",
+    values: [BigNumberish, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "markExecutionFailed",
+    functionFragment: "markExpired",
+    values: [BigNumberish[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "markFailed",
     values: [BigNumberish, string]
   ): string;
   encodeFunctionData(
@@ -229,24 +226,12 @@ export interface TriggerContractInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "setExecutionReward",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "setTokenContract",
-    values: [BigNumberish, AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "startTriggerExecution",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "tokenContracts",
-    values: [BigNumberish]
+    functionFragment: "triggerFee",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "triggers",
@@ -254,12 +239,16 @@ export interface TriggerContractInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "updateTriggerFee",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "userTriggers",
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "userUsdcDeposits",
-    values: [AddressLike]
+    functionFragment: "withdrawFees",
+    values?: undefined
   ): string;
 
   decodeFunctionResult(
@@ -271,11 +260,15 @@ export interface TriggerContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "MAX_SLIPPAGE",
+    functionFragment: "MAX_TRIGGER_DURATION",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "USDC_TOKEN_ID",
+    functionFragment: "MIN_TRIGGER_DURATION",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "activeTriggerCount",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -283,15 +276,7 @@ export interface TriggerContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "claimRefund",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "completeTriggerExecution",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "convertOraclePrice",
+    functionFragment: "checkTrigger",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -299,30 +284,18 @@ export interface TriggerContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "emergencyWithdraw",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "executionReward",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getContractSpotBalance",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getOraclePrice",
+    functionFragment: "getActiveTriggerCount",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "getTrigger", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "getSystemAddress",
+    functionFragment: "getUserActiveTriggers",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "getTrigger", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getUserTriggers",
     data: BytesLike
@@ -330,13 +303,14 @@ export interface TriggerContractInterface extends Interface {
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "isTriggerReady",
+    functionFragment: "markExecuted",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "markExecutionFailed",
+    functionFragment: "markExpired",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "markFailed", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "nextTriggerId",
     data: BytesLike
@@ -349,42 +323,31 @@ export interface TriggerContractInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "setExecutionReward",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "setTokenContract",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "startTriggerExecution",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "tokenContracts",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "triggerFee", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "triggers", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "updateTriggerFee",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "userTriggers",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "userUsdcDeposits",
+    functionFragment: "withdrawFees",
     data: BytesLike
   ): Result;
 }
 
-export namespace PausedEvent {
-  export type InputTuple = [account: AddressLike];
-  export type OutputTuple = [account: string];
+export namespace FeeUpdatedEvent {
+  export type InputTuple = [newFee: BigNumberish];
+  export type OutputTuple = [newFee: bigint];
   export interface OutputObject {
-    account: string;
+    newFee: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -392,21 +355,11 @@ export namespace PausedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace RefundClaimedEvent {
-  export type InputTuple = [
-    triggerId: BigNumberish,
-    user: AddressLike,
-    usdcAmount: BigNumberish
-  ];
-  export type OutputTuple = [
-    triggerId: bigint,
-    user: string,
-    usdcAmount: bigint
-  ];
+export namespace PausedEvent {
+  export type InputTuple = [account: AddressLike];
+  export type OutputTuple = [account: string];
   export interface OutputObject {
-    triggerId: bigint;
-    user: string;
-    usdcAmount: bigint;
+    account: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -489,32 +442,32 @@ export namespace TriggerCreatedEvent {
   export type InputTuple = [
     triggerId: BigNumberish,
     user: AddressLike,
-    targetOracleIndex: BigNumberish,
-    targetToken: BigNumberish,
-    usdcAmount: BigNumberish,
-    triggerPrice: BigNumberish,
+    watchAsset: string,
+    targetPrice: BigNumberish,
     isAbove: boolean,
-    maxSlippage: BigNumberish
+    tradeAsset: string,
+    isBuy: boolean,
+    amount: BigNumberish
   ];
   export type OutputTuple = [
     triggerId: bigint,
     user: string,
-    targetOracleIndex: bigint,
-    targetToken: bigint,
-    usdcAmount: bigint,
-    triggerPrice: bigint,
+    watchAsset: string,
+    targetPrice: bigint,
     isAbove: boolean,
-    maxSlippage: bigint
+    tradeAsset: string,
+    isBuy: boolean,
+    amount: bigint
   ];
   export interface OutputObject {
     triggerId: bigint;
     user: string;
-    targetOracleIndex: bigint;
-    targetToken: bigint;
-    usdcAmount: bigint;
-    triggerPrice: bigint;
+    watchAsset: string;
+    targetPrice: bigint;
     isAbove: boolean;
-    maxSlippage: bigint;
+    tradeAsset: string;
+    isBuy: boolean;
+    amount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -527,19 +480,19 @@ export namespace TriggerExecutedEvent {
     triggerId: BigNumberish,
     executor: AddressLike,
     executionPrice: BigNumberish,
-    outputAmount: BigNumberish
+    executionTxHash: BytesLike
   ];
   export type OutputTuple = [
     triggerId: bigint,
     executor: string,
     executionPrice: bigint,
-    outputAmount: bigint
+    executionTxHash: string
   ];
   export interface OutputObject {
     triggerId: bigint;
     executor: string;
     executionPrice: bigint;
-    outputAmount: bigint;
+    executionTxHash: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -547,43 +500,24 @@ export namespace TriggerExecutedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace TriggerExecutionFailedEvent {
-  export type InputTuple = [
-    triggerId: BigNumberish,
-    executor: AddressLike,
-    reason: string
-  ];
-  export type OutputTuple = [
-    triggerId: bigint,
-    executor: string,
-    reason: string
-  ];
+export namespace TriggerExpiredEvent {
+  export type InputTuple = [triggerId: BigNumberish];
+  export type OutputTuple = [triggerId: bigint];
   export interface OutputObject {
     triggerId: bigint;
-    executor: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace TriggerFailedEvent {
+  export type InputTuple = [triggerId: BigNumberish, reason: string];
+  export type OutputTuple = [triggerId: bigint, reason: string];
+  export interface OutputObject {
+    triggerId: bigint;
     reason: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace TriggerExecutionStartedEvent {
-  export type InputTuple = [
-    triggerId: BigNumberish,
-    executor: AddressLike,
-    executionPrice: BigNumberish
-  ];
-  export type OutputTuple = [
-    triggerId: bigint,
-    executor: string,
-    executionPrice: bigint
-  ];
-  export interface OutputObject {
-    triggerId: bigint;
-    executor: string;
-    executionPrice: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -650,9 +584,11 @@ export interface TriggerContract extends BaseContract {
 
   EXECUTOR_ROLE: TypedContractMethod<[], [string], "view">;
 
-  MAX_SLIPPAGE: TypedContractMethod<[], [bigint], "view">;
+  MAX_TRIGGER_DURATION: TypedContractMethod<[], [bigint], "view">;
 
-  USDC_TOKEN_ID: TypedContractMethod<[], [bigint], "view">;
+  MIN_TRIGGER_DURATION: TypedContractMethod<[], [bigint], "view">;
+
+  activeTriggerCount: TypedContractMethod<[], [bigint], "view">;
 
   cancelTrigger: TypedContractMethod<
     [triggerId: BigNumberish],
@@ -660,68 +596,40 @@ export interface TriggerContract extends BaseContract {
     "nonpayable"
   >;
 
-  claimRefund: TypedContractMethod<
-    [triggerId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  completeTriggerExecution: TypedContractMethod<
-    [triggerId: BigNumberish, actualOutputAmount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  convertOraclePrice: TypedContractMethod<
-    [rawPrice: BigNumberish, assetDecimals: BigNumberish],
-    [bigint],
+  checkTrigger: TypedContractMethod<
+    [triggerId: BigNumberish, currentPrice: BigNumberish],
+    [[boolean, string] & { shouldExecute: boolean; reason: string }],
     "view"
   >;
 
   createTrigger: TypedContractMethod<
     [
-      targetOracleIndex: BigNumberish,
-      targetToken: BigNumberish,
-      usdcAmount: BigNumberish,
-      triggerPrice: BigNumberish,
+      watchAsset: string,
+      targetPrice: BigNumberish,
       isAbove: boolean,
-      maxSlippage: BigNumberish
+      tradeAsset: string,
+      isBuy: boolean,
+      amount: BigNumberish,
+      maxSlippage: BigNumberish,
+      durationHours: BigNumberish
     ],
-    [void],
+    [bigint],
     "payable"
   >;
 
-  emergencyWithdraw: TypedContractMethod<
-    [tokenId: BigNumberish, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  executionReward: TypedContractMethod<[], [bigint], "view">;
-
-  getContractSpotBalance: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [[bigint, bigint] & { total: bigint; hold: bigint }],
-    "view"
-  >;
-
-  getOraclePrice: TypedContractMethod<
-    [oracleIndex: BigNumberish],
-    [bigint],
-    "view"
-  >;
+  getActiveTriggerCount: TypedContractMethod<[], [bigint], "view">;
 
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
-
-  getSystemAddress: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [string],
-    "view"
-  >;
 
   getTrigger: TypedContractMethod<
     [triggerId: BigNumberish],
     [TriggerContract.TriggerStructOutput],
+    "view"
+  >;
+
+  getUserActiveTriggers: TypedContractMethod<
+    [user: AddressLike],
+    [TriggerContract.TriggerStructOutput[]],
     "view"
   >;
 
@@ -739,13 +647,23 @@ export interface TriggerContract extends BaseContract {
     "view"
   >;
 
-  isTriggerReady: TypedContractMethod<
-    [triggerId: BigNumberish],
-    [[boolean, bigint] & { conditionMet: boolean; currentPrice: bigint }],
-    "view"
+  markExecuted: TypedContractMethod<
+    [
+      triggerId: BigNumberish,
+      executionPrice: BigNumberish,
+      executionTxHash: BytesLike
+    ],
+    [void],
+    "nonpayable"
   >;
 
-  markExecutionFailed: TypedContractMethod<
+  markExpired: TypedContractMethod<
+    [triggerIds: BigNumberish[]],
+    [void],
+    "nonpayable"
+  >;
+
+  markFailed: TypedContractMethod<
     [triggerId: BigNumberish, reason: string],
     [void],
     "nonpayable"
@@ -769,31 +687,13 @@ export interface TriggerContract extends BaseContract {
     "nonpayable"
   >;
 
-  setExecutionReward: TypedContractMethod<
-    [newReward: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  setTokenContract: TypedContractMethod<
-    [tokenId: BigNumberish, contractAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-
-  startTriggerExecution: TypedContractMethod<
-    [triggerId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
     [boolean],
     "view"
   >;
 
-  tokenContracts: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  triggerFee: TypedContractMethod<[], [bigint], "view">;
 
   triggers: TypedContractMethod<
     [arg0: BigNumberish],
@@ -801,29 +701,37 @@ export interface TriggerContract extends BaseContract {
       [
         bigint,
         string,
+        string,
         bigint,
-        bigint,
-        bigint,
-        bigint,
+        boolean,
+        string,
         boolean,
         bigint,
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        string
       ] & {
         id: bigint;
         user: string;
-        targetOracleIndex: bigint;
-        targetToken: bigint;
-        usdcAmount: bigint;
-        triggerPrice: bigint;
+        watchAsset: string;
+        targetPrice: bigint;
         isAbove: boolean;
+        tradeAsset: string;
+        isBuy: boolean;
+        amount: bigint;
         maxSlippage: bigint;
         createdAt: bigint;
-        state: bigint;
-        executionStarted: bigint;
-        outputAmount: bigint;
+        expiresAt: bigint;
+        status: bigint;
+        feePaid: bigint;
+        executedAt: bigint;
+        executionPrice: bigint;
+        executionTxHash: string;
       }
     ],
     "view"
@@ -831,13 +739,19 @@ export interface TriggerContract extends BaseContract {
 
   unpause: TypedContractMethod<[], [void], "nonpayable">;
 
+  updateTriggerFee: TypedContractMethod<
+    [newFee: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   userTriggers: TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
     [bigint],
     "view"
   >;
 
-  userUsdcDeposits: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  withdrawFees: TypedContractMethod<[], [void], "nonpayable">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -850,76 +764,58 @@ export interface TriggerContract extends BaseContract {
     nameOrSignature: "EXECUTOR_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "MAX_SLIPPAGE"
+    nameOrSignature: "MAX_TRIGGER_DURATION"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "USDC_TOKEN_ID"
+    nameOrSignature: "MIN_TRIGGER_DURATION"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "activeTriggerCount"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "cancelTrigger"
   ): TypedContractMethod<[triggerId: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "claimRefund"
-  ): TypedContractMethod<[triggerId: BigNumberish], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "completeTriggerExecution"
+    nameOrSignature: "checkTrigger"
   ): TypedContractMethod<
-    [triggerId: BigNumberish, actualOutputAmount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "convertOraclePrice"
-  ): TypedContractMethod<
-    [rawPrice: BigNumberish, assetDecimals: BigNumberish],
-    [bigint],
+    [triggerId: BigNumberish, currentPrice: BigNumberish],
+    [[boolean, string] & { shouldExecute: boolean; reason: string }],
     "view"
   >;
   getFunction(
     nameOrSignature: "createTrigger"
   ): TypedContractMethod<
     [
-      targetOracleIndex: BigNumberish,
-      targetToken: BigNumberish,
-      usdcAmount: BigNumberish,
-      triggerPrice: BigNumberish,
+      watchAsset: string,
+      targetPrice: BigNumberish,
       isAbove: boolean,
-      maxSlippage: BigNumberish
+      tradeAsset: string,
+      isBuy: boolean,
+      amount: BigNumberish,
+      maxSlippage: BigNumberish,
+      durationHours: BigNumberish
     ],
-    [void],
+    [bigint],
     "payable"
   >;
   getFunction(
-    nameOrSignature: "emergencyWithdraw"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "executionReward"
+    nameOrSignature: "getActiveTriggerCount"
   ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getContractSpotBalance"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish],
-    [[bigint, bigint] & { total: bigint; hold: bigint }],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getOraclePrice"
-  ): TypedContractMethod<[oracleIndex: BigNumberish], [bigint], "view">;
   getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
-  getFunction(
-    nameOrSignature: "getSystemAddress"
-  ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "getTrigger"
   ): TypedContractMethod<
     [triggerId: BigNumberish],
     [TriggerContract.TriggerStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getUserActiveTriggers"
+  ): TypedContractMethod<
+    [user: AddressLike],
+    [TriggerContract.TriggerStructOutput[]],
     "view"
   >;
   getFunction(
@@ -940,14 +836,21 @@ export interface TriggerContract extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "isTriggerReady"
+    nameOrSignature: "markExecuted"
   ): TypedContractMethod<
-    [triggerId: BigNumberish],
-    [[boolean, bigint] & { conditionMet: boolean; currentPrice: bigint }],
-    "view"
+    [
+      triggerId: BigNumberish,
+      executionPrice: BigNumberish,
+      executionTxHash: BytesLike
+    ],
+    [void],
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "markExecutionFailed"
+    nameOrSignature: "markExpired"
+  ): TypedContractMethod<[triggerIds: BigNumberish[]], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "markFailed"
   ): TypedContractMethod<
     [triggerId: BigNumberish, reason: string],
     [void],
@@ -977,24 +880,11 @@ export interface TriggerContract extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "setExecutionReward"
-  ): TypedContractMethod<[newReward: BigNumberish], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setTokenContract"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish, contractAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "startTriggerExecution"
-  ): TypedContractMethod<[triggerId: BigNumberish], [void], "nonpayable">;
-  getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: "tokenContracts"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+    nameOrSignature: "triggerFee"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "triggers"
   ): TypedContractMethod<
@@ -1003,29 +893,37 @@ export interface TriggerContract extends BaseContract {
       [
         bigint,
         string,
+        string,
         bigint,
-        bigint,
-        bigint,
-        bigint,
+        boolean,
+        string,
         boolean,
         bigint,
         bigint,
         bigint,
         bigint,
-        bigint
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        string
       ] & {
         id: bigint;
         user: string;
-        targetOracleIndex: bigint;
-        targetToken: bigint;
-        usdcAmount: bigint;
-        triggerPrice: bigint;
+        watchAsset: string;
+        targetPrice: bigint;
         isAbove: boolean;
+        tradeAsset: string;
+        isBuy: boolean;
+        amount: bigint;
         maxSlippage: bigint;
         createdAt: bigint;
-        state: bigint;
-        executionStarted: bigint;
-        outputAmount: bigint;
+        expiresAt: bigint;
+        status: bigint;
+        feePaid: bigint;
+        executedAt: bigint;
+        executionPrice: bigint;
+        executionTxHash: string;
       }
     ],
     "view"
@@ -1034,6 +932,9 @@ export interface TriggerContract extends BaseContract {
     nameOrSignature: "unpause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
+    nameOrSignature: "updateTriggerFee"
+  ): TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "userTriggers"
   ): TypedContractMethod<
     [arg0: AddressLike, arg1: BigNumberish],
@@ -1041,22 +942,22 @@ export interface TriggerContract extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "userUsdcDeposits"
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+    nameOrSignature: "withdrawFees"
+  ): TypedContractMethod<[], [void], "nonpayable">;
 
+  getEvent(
+    key: "FeeUpdated"
+  ): TypedContractEvent<
+    FeeUpdatedEvent.InputTuple,
+    FeeUpdatedEvent.OutputTuple,
+    FeeUpdatedEvent.OutputObject
+  >;
   getEvent(
     key: "Paused"
   ): TypedContractEvent<
     PausedEvent.InputTuple,
     PausedEvent.OutputTuple,
     PausedEvent.OutputObject
-  >;
-  getEvent(
-    key: "RefundClaimed"
-  ): TypedContractEvent<
-    RefundClaimedEvent.InputTuple,
-    RefundClaimedEvent.OutputTuple,
-    RefundClaimedEvent.OutputObject
   >;
   getEvent(
     key: "RoleAdminChanged"
@@ -1101,18 +1002,18 @@ export interface TriggerContract extends BaseContract {
     TriggerExecutedEvent.OutputObject
   >;
   getEvent(
-    key: "TriggerExecutionFailed"
+    key: "TriggerExpired"
   ): TypedContractEvent<
-    TriggerExecutionFailedEvent.InputTuple,
-    TriggerExecutionFailedEvent.OutputTuple,
-    TriggerExecutionFailedEvent.OutputObject
+    TriggerExpiredEvent.InputTuple,
+    TriggerExpiredEvent.OutputTuple,
+    TriggerExpiredEvent.OutputObject
   >;
   getEvent(
-    key: "TriggerExecutionStarted"
+    key: "TriggerFailed"
   ): TypedContractEvent<
-    TriggerExecutionStartedEvent.InputTuple,
-    TriggerExecutionStartedEvent.OutputTuple,
-    TriggerExecutionStartedEvent.OutputObject
+    TriggerFailedEvent.InputTuple,
+    TriggerFailedEvent.OutputTuple,
+    TriggerFailedEvent.OutputObject
   >;
   getEvent(
     key: "Unpaused"
@@ -1123,6 +1024,17 @@ export interface TriggerContract extends BaseContract {
   >;
 
   filters: {
+    "FeeUpdated(uint256)": TypedContractEvent<
+      FeeUpdatedEvent.InputTuple,
+      FeeUpdatedEvent.OutputTuple,
+      FeeUpdatedEvent.OutputObject
+    >;
+    FeeUpdated: TypedContractEvent<
+      FeeUpdatedEvent.InputTuple,
+      FeeUpdatedEvent.OutputTuple,
+      FeeUpdatedEvent.OutputObject
+    >;
+
     "Paused(address)": TypedContractEvent<
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
@@ -1132,17 +1044,6 @@ export interface TriggerContract extends BaseContract {
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
       PausedEvent.OutputObject
-    >;
-
-    "RefundClaimed(uint256,address,uint256)": TypedContractEvent<
-      RefundClaimedEvent.InputTuple,
-      RefundClaimedEvent.OutputTuple,
-      RefundClaimedEvent.OutputObject
-    >;
-    RefundClaimed: TypedContractEvent<
-      RefundClaimedEvent.InputTuple,
-      RefundClaimedEvent.OutputTuple,
-      RefundClaimedEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
@@ -1189,7 +1090,7 @@ export interface TriggerContract extends BaseContract {
       TriggerCancelledEvent.OutputObject
     >;
 
-    "TriggerCreated(uint256,address,uint32,uint64,uint256,uint256,bool,uint256)": TypedContractEvent<
+    "TriggerCreated(uint256,address,string,uint256,bool,string,bool,uint256)": TypedContractEvent<
       TriggerCreatedEvent.InputTuple,
       TriggerCreatedEvent.OutputTuple,
       TriggerCreatedEvent.OutputObject
@@ -1200,7 +1101,7 @@ export interface TriggerContract extends BaseContract {
       TriggerCreatedEvent.OutputObject
     >;
 
-    "TriggerExecuted(uint256,address,uint256,uint256)": TypedContractEvent<
+    "TriggerExecuted(uint256,address,uint256,bytes32)": TypedContractEvent<
       TriggerExecutedEvent.InputTuple,
       TriggerExecutedEvent.OutputTuple,
       TriggerExecutedEvent.OutputObject
@@ -1211,26 +1112,26 @@ export interface TriggerContract extends BaseContract {
       TriggerExecutedEvent.OutputObject
     >;
 
-    "TriggerExecutionFailed(uint256,address,string)": TypedContractEvent<
-      TriggerExecutionFailedEvent.InputTuple,
-      TriggerExecutionFailedEvent.OutputTuple,
-      TriggerExecutionFailedEvent.OutputObject
+    "TriggerExpired(uint256)": TypedContractEvent<
+      TriggerExpiredEvent.InputTuple,
+      TriggerExpiredEvent.OutputTuple,
+      TriggerExpiredEvent.OutputObject
     >;
-    TriggerExecutionFailed: TypedContractEvent<
-      TriggerExecutionFailedEvent.InputTuple,
-      TriggerExecutionFailedEvent.OutputTuple,
-      TriggerExecutionFailedEvent.OutputObject
+    TriggerExpired: TypedContractEvent<
+      TriggerExpiredEvent.InputTuple,
+      TriggerExpiredEvent.OutputTuple,
+      TriggerExpiredEvent.OutputObject
     >;
 
-    "TriggerExecutionStarted(uint256,address,uint256)": TypedContractEvent<
-      TriggerExecutionStartedEvent.InputTuple,
-      TriggerExecutionStartedEvent.OutputTuple,
-      TriggerExecutionStartedEvent.OutputObject
+    "TriggerFailed(uint256,string)": TypedContractEvent<
+      TriggerFailedEvent.InputTuple,
+      TriggerFailedEvent.OutputTuple,
+      TriggerFailedEvent.OutputObject
     >;
-    TriggerExecutionStarted: TypedContractEvent<
-      TriggerExecutionStartedEvent.InputTuple,
-      TriggerExecutionStartedEvent.OutputTuple,
-      TriggerExecutionStartedEvent.OutputObject
+    TriggerFailed: TypedContractEvent<
+      TriggerFailedEvent.InputTuple,
+      TriggerFailedEvent.OutputTuple,
+      TriggerFailedEvent.OutputObject
     >;
 
     "Unpaused(address)": TypedContractEvent<

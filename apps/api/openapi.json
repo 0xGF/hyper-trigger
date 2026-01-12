@@ -1,0 +1,941 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_getHealth",
+        "summary": "Health check",
+        "description": "Returns the health status of the API",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/prices": {
+      "get": {
+        "operationId": "PricesController_getPrices",
+        "summary": "Get all token prices",
+        "description": "Returns current prices for all supported tokens",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "prices"
+        ]
+      }
+    },
+    "/api/v1/prices/history/{symbol}": {
+      "get": {
+        "operationId": "PricesController_getPriceHistory",
+        "summary": "Get price history",
+        "description": "Returns historical price data for a token",
+        "parameters": [
+          {
+            "name": "symbol",
+            "required": true,
+            "in": "path",
+            "description": "Token symbol",
+            "schema": {
+              "example": "BTC",
+              "type": "string"
+            }
+          },
+          {
+            "name": "interval",
+            "required": false,
+            "in": "query",
+            "description": "Time interval",
+            "schema": {
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h",
+                "4h",
+                "1d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of data points",
+            "schema": {
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceHistoryResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found"
+          }
+        },
+        "tags": [
+          "prices"
+        ]
+      }
+    },
+    "/api/v1/prices/{symbol}": {
+      "get": {
+        "operationId": "PricesController_getPriceBySymbol",
+        "summary": "Get price by symbol",
+        "description": "Returns the current price for a specific token",
+        "parameters": [
+          {
+            "name": "symbol",
+            "required": true,
+            "in": "path",
+            "description": "Token symbol",
+            "schema": {
+              "example": "BTC",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found"
+          }
+        },
+        "tags": [
+          "prices"
+        ]
+      }
+    },
+    "/api/v1/tokens": {
+      "get": {
+        "operationId": "TokensController_getTokens",
+        "summary": "Get all tokens",
+        "description": "Returns a list of all supported tokens",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokensResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "tokens"
+        ]
+      }
+    },
+    "/api/v1/tokens/{symbol}": {
+      "get": {
+        "operationId": "TokensController_getTokenBySymbol",
+        "summary": "Get token by symbol",
+        "description": "Returns details for a specific token",
+        "parameters": [
+          {
+            "name": "symbol",
+            "required": true,
+            "in": "path",
+            "description": "Token symbol",
+            "schema": {
+              "example": "BTC",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found"
+          }
+        },
+        "tags": [
+          "tokens"
+        ]
+      }
+    },
+    "/api/v1/triggers": {
+      "get": {
+        "operationId": "TriggersController_getTriggers",
+        "summary": "Get all triggers",
+        "description": "Returns a list of all triggers",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "active",
+                "executed",
+                "cancelled",
+                "expired",
+                "all"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggersResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "triggers"
+        ]
+      }
+    },
+    "/api/v1/triggers/check/{triggerId}": {
+      "get": {
+        "operationId": "TriggersController_checkTrigger",
+        "summary": "Check trigger status",
+        "description": "Check if a trigger is ready to execute",
+        "parameters": [
+          {
+            "name": "triggerId",
+            "required": true,
+            "in": "path",
+            "description": "Trigger ID",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerCheckResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "triggers"
+        ]
+      }
+    },
+    "/api/v1/triggers/user/{address}": {
+      "get": {
+        "operationId": "TriggersController_getUserTriggers",
+        "summary": "Get user triggers",
+        "description": "Returns all triggers for a user",
+        "parameters": [
+          {
+            "name": "address",
+            "required": true,
+            "in": "path",
+            "description": "User wallet address",
+            "schema": {
+              "example": "0x...",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "active",
+                "executed",
+                "cancelled",
+                "expired",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggersResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "triggers"
+        ]
+      }
+    },
+    "/api/v1/triggers/{triggerId}": {
+      "get": {
+        "operationId": "TriggersController_getTriggerById",
+        "summary": "Get trigger by ID",
+        "description": "Returns details for a specific trigger",
+        "parameters": [
+          {
+            "name": "triggerId",
+            "required": true,
+            "in": "path",
+            "description": "Trigger ID",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trigger not found"
+          }
+        },
+        "tags": [
+          "triggers"
+        ]
+      }
+    },
+    "/api/v1/analytics/overview": {
+      "get": {
+        "operationId": "AnalyticsController_getOverview",
+        "summary": "Platform overview",
+        "description": "Returns platform-wide analytics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOverviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/user/{address}": {
+      "get": {
+        "operationId": "AnalyticsController_getUserAnalytics",
+        "summary": "User analytics",
+        "description": "Returns analytics for a specific user",
+        "parameters": [
+          {
+            "name": "address",
+            "required": true,
+            "in": "path",
+            "description": "User wallet address",
+            "schema": {
+              "example": "0x...",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAnalyticsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "analytics"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "HyperTrigger API",
+    "description": "Backend API for HyperTrigger",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local Development"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ServicesStatus": {
+        "type": "object",
+        "properties": {
+          "hyperliquid": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "example": "up"
+          },
+          "contract": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "example": "up"
+          }
+        },
+        "required": [
+          "hyperliquid",
+          "contract"
+        ]
+      },
+      "HealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "degraded",
+              "unhealthy"
+            ],
+            "example": "healthy"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2024-01-10T12:00:00.000Z"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "services": {
+            "$ref": "#/components/schemas/ServicesStatus"
+          }
+        },
+        "required": [
+          "status",
+          "timestamp",
+          "version",
+          "services"
+        ]
+      },
+      "PricesResponseDto": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PriceDto"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2024-01-10T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "prices",
+          "timestamp"
+        ]
+      },
+      "CandleDto": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number",
+            "example": 1704888000000,
+            "description": "Unix timestamp in milliseconds"
+          },
+          "open": {
+            "type": "number",
+            "example": 104000
+          },
+          "high": {
+            "type": "number",
+            "example": 105000
+          },
+          "low": {
+            "type": "number",
+            "example": 103500
+          },
+          "close": {
+            "type": "number",
+            "example": 104500
+          },
+          "volume": {
+            "type": "number",
+            "example": 1500000
+          }
+        },
+        "required": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ]
+      },
+      "PriceHistoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "BTC"
+          },
+          "interval": {
+            "type": "string",
+            "example": "1h"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandleDto"
+            }
+          }
+        },
+        "required": [
+          "symbol",
+          "interval",
+          "data"
+        ]
+      },
+      "PriceResponseDto": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "BTC"
+          },
+          "price": {
+            "type": "number",
+            "example": 104500.25
+          },
+          "change24h": {
+            "type": "number",
+            "example": 2.5
+          },
+          "volume24h": {
+            "type": "number",
+            "example": 18000000
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2024-01-10T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "symbol",
+          "price",
+          "timestamp"
+        ]
+      },
+      "TokenDto": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "BTC"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Bitcoin"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "major",
+              "native",
+              "stablecoin",
+              "alt",
+              "meme"
+            ],
+            "example": "major"
+          },
+          "spotIndex": {
+            "type": "number",
+            "example": 197
+          },
+          "tokenId": {
+            "type": "string",
+            "example": "0x8f254b963e8468305d409b33aa137c67"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "symbol",
+          "displayName",
+          "category",
+          "isActive"
+        ]
+      },
+      "TokensResponseDto": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TokenDto"
+            }
+          }
+        },
+        "required": [
+          "tokens"
+        ]
+      },
+      "TriggerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          },
+          "user": {
+            "type": "string",
+            "example": "0x1234567890abcdef1234567890abcdef12345678"
+          },
+          "inputToken": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "targetToken": {
+            "type": "string",
+            "example": "UBTC"
+          },
+          "triggerToken": {
+            "type": "string",
+            "example": "UBTC"
+          },
+          "inputAmount": {
+            "type": "string",
+            "example": "1000.0"
+          },
+          "triggerPrice": {
+            "type": "string",
+            "example": "105000.0"
+          },
+          "isAbove": {
+            "type": "boolean",
+            "example": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "executing",
+              "executed",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "example": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2024-01-10T12:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2024-02-10T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "inputToken",
+          "targetToken",
+          "triggerToken",
+          "inputAmount",
+          "triggerPrice",
+          "isAbove",
+          "status",
+          "createdAt"
+        ]
+      },
+      "TriggersResponseDto": {
+        "type": "object",
+        "properties": {
+          "triggers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TriggerDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "example": 100
+          },
+          "limit": {
+            "type": "number",
+            "example": 50
+          },
+          "offset": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "triggers",
+          "total"
+        ]
+      },
+      "TriggerCheckResponseDto": {
+        "type": "object",
+        "properties": {
+          "triggerId": {
+            "type": "number",
+            "example": 1
+          },
+          "conditionMet": {
+            "type": "boolean",
+            "example": false
+          },
+          "reason": {
+            "type": "string",
+            "example": "Price conditions not met"
+          },
+          "currentPrice": {
+            "type": "number",
+            "example": 103500.25
+          },
+          "triggerPrice": {
+            "type": "number",
+            "example": 105000
+          },
+          "isAbove": {
+            "type": "boolean",
+            "example": true
+          },
+          "priceDifference": {
+            "type": "number",
+            "example": -1.43,
+            "description": "Percentage difference from trigger price"
+          }
+        },
+        "required": [
+          "triggerId",
+          "conditionMet",
+          "currentPrice",
+          "triggerPrice",
+          "isAbove",
+          "priceDifference"
+        ]
+      },
+      "PopularTokenDto": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "UBTC"
+          },
+          "count": {
+            "type": "number",
+            "example": 45
+          }
+        },
+        "required": [
+          "symbol",
+          "count"
+        ]
+      },
+      "AnalyticsOverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalTriggers": {
+            "type": "number",
+            "example": 150
+          },
+          "activeTriggers": {
+            "type": "number",
+            "example": 42
+          },
+          "executedTriggers": {
+            "type": "number",
+            "example": 85
+          },
+          "cancelledTriggers": {
+            "type": "number",
+            "example": 23
+          },
+          "totalVolume": {
+            "type": "string",
+            "example": "1250000.00"
+          },
+          "totalVolumeUsd": {
+            "type": "number",
+            "example": 1250000
+          },
+          "uniqueUsers": {
+            "type": "number",
+            "example": 78
+          },
+          "popularTokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PopularTokenDto"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2024-01-10T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "totalTriggers",
+          "activeTriggers",
+          "executedTriggers",
+          "cancelledTriggers",
+          "totalVolume",
+          "totalVolumeUsd",
+          "uniqueUsers",
+          "popularTokens",
+          "timestamp"
+        ]
+      },
+      "UserAnalyticsResponseDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "0x1234567890abcdef1234567890abcdef12345678"
+          },
+          "totalTriggers": {
+            "type": "number",
+            "example": 12
+          },
+          "activeTriggers": {
+            "type": "number",
+            "example": 3
+          },
+          "executedTriggers": {
+            "type": "number",
+            "example": 7
+          },
+          "cancelledTriggers": {
+            "type": "number",
+            "example": 2
+          },
+          "totalVolume": {
+            "type": "string",
+            "example": "15000.00"
+          },
+          "successRate": {
+            "type": "number",
+            "example": 77.78,
+            "description": "Percentage of successfully executed triggers"
+          }
+        },
+        "required": [
+          "address",
+          "totalTriggers",
+          "activeTriggers",
+          "executedTriggers",
+          "cancelledTriggers",
+          "totalVolume",
+          "successRate"
+        ]
+      }
+    }
+  }
+}

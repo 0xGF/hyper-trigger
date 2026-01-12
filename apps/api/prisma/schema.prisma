@@ -1,0 +1,186 @@
+// Prisma Schema for HyperTrigger
+// PostgreSQL database for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TRIGGER TRACKING
+// ============================================
+
+// Synced trigger data from on-chain (cached for performance)
+model Trigger {
+  id              Int      @id
+  userAddress     String   @map("user_address")
+  watchAsset      String   @map("watch_asset")
+  tradeAsset      String   @map("trade_asset")
+  targetPrice     Decimal  @map("target_price") @db.Decimal(30, 6)
+  isAbove         Boolean  @map("is_above")
+  isBuy           Boolean  @map("is_buy")
+  amount          Decimal  @db.Decimal(30, 18)
+  maxSlippage     Int      @map("max_slippage") // basis points
+  status          TriggerStatus @default(ACTIVE)
+  
+  // Timestamps
+  createdAt       DateTime @map("created_at") @db.Timestamptz
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz
+  syncedAt        DateTime @default(now()) @map("synced_at") @db.Timestamptz
+  
+  // Relations
+  executions      TriggerExecution[]
+  jobs            TriggerJob[]
+
+  @@index([userAddress])
+  @@index([status])
+  @@index([watchAsset])
+  @@map("triggers")
+}
+
+enum TriggerStatus {
+  ACTIVE
+  PENDING_EXECUTION
+  EXECUTED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+// ============================================
+// EXECUTION TRACKING
+// ============================================
+
+// Record of trade executions on Hyperliquid
+model TriggerExecution {
+  id              String   @id @default(cuid())
+  triggerId       Int      @map("trigger_id")
+  trigger         Trigger  @relation(fields: [triggerId], references: [id])
+  
+  // Execution details
+  executionPrice  Decimal  @map("execution_price") @db.Decimal(30, 6)
+  executedSize    Decimal  @map("executed_size") @db.Decimal(30, 18)
+  hlOrderId       String?  @map("hl_order_id")
+  
+  // Status tracking
+  status          ExecutionStatus @default(PENDING)
+  markedOnchain   Boolean  @default(false) @map("marked_onchain")
+  onchainTxHash   String?  @map("onchain_tx_hash")
+  
+  // Error handling
+  errorMessage    String?  @map("error_message")
+  retryCount      Int      @default(0) @map("retry_count")
+  
+  // Timestamps
+  tradedAt        DateTime @default(now()) @map("traded_at") @db.Timestamptz
+  confirmedAt     DateTime? @map("confirmed_at") @db.Timestamptz
+  
+  @@index([triggerId])
+  @@index([status])
+  @@index([markedOnchain])
+  @@map("trigger_executions")
+}
+
+enum ExecutionStatus {
+  PENDING           // Trade submitted to HL
+  FILLED            // Trade filled on HL
+  PARTIALLY_FILLED  // Partial fill
+  FAILED            // Trade failed
+  CONFIRMED         // Marked on-chain
+}
+
+// ============================================
+// JOB QUEUE TRACKING
+// ============================================
+
+// Track jobs for monitoring and debugging
+model TriggerJob {
+  id              String   @id @default(cuid())
+  triggerId       Int      @map("trigger_id")
+  trigger         Trigger  @relation(fields: [triggerId], references: [id])
+  
+  // Job details
+  jobType         JobType  @map("job_type")
+  priority        Int      @default(0)
+  workerId        String?  @map("worker_id")
+  
+  // Status
+  status          JobStatus @default(PENDING)
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(3) @map("max_attempts")
+  
+  // Timing
+  scheduledFor    DateTime? @map("scheduled_for") @db.Timestamptz
+  startedAt       DateTime? @map("started_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  
+  // Error tracking
+  lastError       String?  @map("last_error")
+  
+  // Metadata
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([triggerId])
+  @@index([status])
+  @@index([jobType])
+  @@index([scheduledFor])
+  @@map("trigger_jobs")
+}
+
+enum JobType {
+  CHECK_CONDITION   // Check if trigger conditions are met
+  EXECUTE_TRADE     // Execute the trade on HL
+  MARK_ONCHAIN      // Mark execution on-chain
+  SYNC_TRIGGER      // Sync trigger from chain
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// PRICE CACHE
+// ============================================
+
+// Cache prices for quick condition checks
+model PriceCache {
+  asset           String   @id
+  price           Decimal  @db.Decimal(30, 8)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("price_cache")
+}
+
+// ============================================
+// WORKER STATE
+// ============================================
+
+// Track worker instances for distributed processing
+model Worker {
+  id              String   @id @default(cuid())
+  address         String   @unique // Worker wallet address
+  status          WorkerStatus @default(ACTIVE)
+  lastHeartbeat   DateTime @default(now()) @map("last_heartbeat") @db.Timestamptz
+  jobsProcessed   Int      @default(0) @map("jobs_processed")
+  jobsFailed      Int      @default(0) @map("jobs_failed")
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  @@map("workers")
+}
+
+enum WorkerStatus {
+  ACTIVE
+  PAUSED
+  OFFLINE
+}
+
