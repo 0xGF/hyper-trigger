@@ -47,9 +47,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <div id="root" className="h-screen flex flex-col bg-background overflow-hidden">
+          <div id="root" className="min-h-screen lg:h-screen flex flex-col bg-background overflow-x-hidden">
             <Nav />
-            <main className="flex-1 min-h-0 overflow-hidden">
+            <main className="flex-1 min-h-0 lg:overflow-hidden">
               {children}
             </main>
           </div>

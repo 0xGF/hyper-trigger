@@ -224,37 +224,36 @@ export default function HomePage() {
   }
   
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-1 p-1 overflow-hidden">
+    <div className="flex-1 lg:h-full flex flex-col lg:flex-row gap-1 p-1 lg:overflow-hidden">
       {/* Left Panel - Chart + Active Triggers */}
-      <div className="flex flex-col min-w-0 flex-1 min-h-0">
+      <div className="flex flex-col min-w-0 flex-1 min-h-0 shrink-0">
         {/* Token Info Bar */}
-        <div className="px-3 py-2 mb-1 flex items-center gap-10 shrink-0 bg-card border border-border rounded-xl overflow-x-auto">
+        <div className="px-3 py-2 mb-1 flex items-center gap-4 lg:gap-10 shrink-0 bg-card border border-border rounded-xl overflow-x-auto no-scrollbar">
           {/* Token Selector */}
           <button
             onClick={() => setShowTokenModal(true)}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
           >
             <TokenIcon symbol={watchToken} size="md" />
-            <span className="font-semibold text-foreground text-base">{currentToken.displayName}/USDC</span>
+            <span className="font-semibold text-foreground text-sm lg:text-base">{currentToken.displayName}/USDC</span>
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </button>
           
           {/* Spot Badge */}
-          <span className="px-2.5 py-1 text-xs font-medium bg-primary/20 text-primary rounded-md shrink-0">
+          <span className="px-2 py-0.5 text-[10px] lg:text-xs font-medium bg-primary/20 text-primary rounded-md shrink-0">
             Spot
           </span>
           
-          {/* Stats - always render with fixed height to prevent flicker */}
-          {/* Price */}
-          <div className="flex flex-col shrink-0 h-8 justify-center">
+          {/* Stats */}
+          <div className="flex flex-col shrink-0 h-8 justify-center min-w-[60px]">
             <span className="text-[10px] text-muted-foreground leading-none">Price</span>
             <span className="text-xs font-semibold text-foreground tabular-nums leading-tight">
               {priceData ? formatPrice(priceData.price) : '—'}
             </span>
           </div>
           
-          {/* 24H Change */}
-          <div className="flex flex-col shrink-0 h-8 justify-center">
+          {/* 24H Change - Hidden on smallest screens */}
+          <div className="hidden sm:flex flex-col shrink-0 h-8 justify-center min-w-[60px]">
             <span className="text-[10px] text-muted-foreground leading-none">24H Change</span>
             <span className={`text-xs font-semibold tabular-nums leading-tight ${
               priceData && (priceData.change24h ?? 0) >= 0 ? 'text-primary' : 'text-destructive'
@@ -263,8 +262,8 @@ export default function HomePage() {
             </span>
           </div>
           
-          {/* 24H Volume */}
-          <div className="flex flex-col shrink-0 h-8 justify-center">
+          {/* 24H Volume - Hidden on small screens */}
+          <div className="hidden md:flex flex-col shrink-0 h-8 justify-center min-w-[70px]">
             <span className="text-[10px] text-muted-foreground leading-none">24H Volume</span>
             <span className="text-xs font-semibold text-foreground tabular-nums leading-tight">
               {priceData ? `${(priceData.volume24h ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}
@@ -275,7 +274,7 @@ export default function HomePage() {
           <div className="flex-1" />
           
           {/* Interval Selector */}
-          <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5 shrink-0">
+          <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5 shrink-0 overflow-x-auto no-scrollbar">
             {[
               { label: '1m', value: '1' },
               { label: '5m', value: '5' },
@@ -287,7 +286,7 @@ export default function HomePage() {
               <button
                 key={int.value}
                 onClick={() => setInterval(int.value)}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-1.5 lg:px-2 py-1 text-[10px] lg:text-xs font-medium rounded-md transition-colors ${
                   interval === int.value 
                     ? 'bg-card text-foreground' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -310,7 +309,7 @@ export default function HomePage() {
         />
         
         {/* Chart + OrderBook */}
-        <div className="flex-1 min-h-[200px] flex gap-1">
+        <div className="flex-1 min-h-[400px] lg:min-h-[200px] flex gap-1">
           {/* Chart */}
           <div className="flex-1 min-w-0 bg-card border border-border rounded-xl overflow-hidden">
             <HyperliquidChart 
@@ -327,17 +326,75 @@ export default function HomePage() {
           </div>
         </div>
         
-        {/* Active Triggers Table */}
+        {/* Active Triggers Section */}
         <div className="shrink-0 mt-1 bg-card border border-border rounded-xl overflow-hidden min-h-[180px] flex flex-col">
           {/* Header */}
-          <div className="px-4 py-2 border-b border-border">
-            <span className="text-xs font-medium text-foreground">Active Triggers</span>
-            {allTriggers.length > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">({allTriggers.length})</span>
-            )}
+          <div className="px-4 py-2 border-b border-border flex items-center justify-between">
+            <div>
+              <span className="text-xs font-medium text-foreground">Active Triggers</span>
+              {allTriggers.length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">({allTriggers.length})</span>
+              )}
+            </div>
           </div>
           
-          <table className="w-full text-sm">
+          {/* Mobile Card View */}
+          <div className="lg:hidden divide-y divide-border/50">
+            {allTriggers.length === 0 ? (
+              <div className="px-4 py-10 text-center text-xs text-muted-foreground">
+                No active triggers
+              </div>
+            ) : (
+              allTriggers.map(trigger => (
+                <div 
+                  key={trigger.id}
+                  onClick={() => setWatchToken(trigger.watchAsset)}
+                  className="p-4 space-y-3 active:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TokenIcon symbol={trigger.watchAsset} size="sm" />
+                      <span className="text-sm font-semibold">{getDisplayName(trigger.watchAsset)}</span>
+                      <span className={trigger.isAbove ? 'text-primary' : 'text-destructive'}>
+                        {trigger.isAbove ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                      </span>
+                      <span className="text-sm text-muted-foreground">${trigger.targetPrice.toLocaleString()}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${trigger.isBuy ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                      {trigger.isBuy ? 'BUY' : 'SELL'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <TokenIcon symbol={trigger.tradeAsset} size="xs" />
+                      <span>{trigger.isBuy ? 'For' : 'Selling'} {trigger.isBuy ? `$${parseFloat(trigger.amount).toFixed(2)}` : `${parseFloat(trigger.amount).toFixed(4)} ${getDisplayName(trigger.tradeAsset)}`}</span>
+                    </div>
+                    
+                    <div>
+                      {trigger.isExecuting ? (
+                        <div className="flex items-center gap-1.5 text-primary font-medium">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Executing</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCancelTrigger(trigger.id) }}
+                          disabled={cancellingId !== null}
+                          className="text-destructive font-medium active:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <table className="hidden lg:table w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="text-left px-4 py-2.5 font-medium">Time</th>
@@ -345,7 +402,7 @@ export default function HomePage() {
                 <th className="text-left px-4 py-2.5 font-medium">When</th>
                 <th className="text-left px-4 py-2.5 font-medium">Trade</th>
                 <th className="text-left px-4 py-2.5 font-medium">Side</th>
-                <th className="text-left px-4 py-2.5 font-medium">Amount</th>
+                <th className="text-left px-4 py-2.5 font-medium">Size</th>
                 <th className="text-right px-4 py-2.5 font-medium"></th>
               </tr>
             </thead>
@@ -363,73 +420,48 @@ export default function HomePage() {
                     onClick={() => setWatchToken(trigger.watchAsset)}
                     className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
                   >
-                    {/* Time */}
-                    <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                    <td className="px-4 py-2.5 text-muted-foreground tabular-nums text-xs">
                       {new Date().toLocaleDateString()} 
                     </td>
-                    
-                    {/* Type */}
-                    <td className="px-4 py-2.5 text-foreground">
-                      Spot
-                    </td>
-                    
-                    {/* When (Watch Asset + Direction + Price) */}
+                    <td className="px-4 py-2.5 text-foreground text-xs">Spot</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <TokenIcon symbol={trigger.watchAsset} size="sm" />
-                        <span className="text-foreground">{getDisplayName(trigger.watchAsset)}</span>
-                        <span className={`inline-flex items-center ${
-                          trigger.isAbove ? 'text-primary' : 'text-destructive'
-                        }`}>
-                          {trigger.isAbove ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3" />
-                          )}
+                        <span className="text-foreground text-xs">{getDisplayName(trigger.watchAsset)}</span>
+                        <span className={`inline-flex items-center ${trigger.isAbove ? 'text-primary' : 'text-destructive'}`}>
+                          {trigger.isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                         </span>
-                        <span className="text-muted-foreground">${trigger.targetPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        <span className="text-muted-foreground text-xs">${trigger.targetPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                     </td>
-                    
-                    {/* Trade Asset */}
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <TokenIcon symbol={trigger.tradeAsset} size="sm" />
-                        <span className="text-foreground">{getDisplayName(trigger.tradeAsset)}</span>
+                        <span className="text-foreground text-xs">{getDisplayName(trigger.tradeAsset)}</span>
                       </div>
                     </td>
-                    
-                    {/* Side (Buy/Sell) */}
                     <td className="px-4 py-2.5">
-                      <span className={trigger.isBuy ? 'text-primary' : 'text-destructive'}>
+                      <span className={`text-xs ${trigger.isBuy ? 'text-primary' : 'text-destructive'}`}>
                         {trigger.isBuy ? 'Buy' : 'Sell'}
                       </span>
                     </td>
-                    
-                    {/* Size */}
-                    <td className="px-4 py-2.5 text-foreground tabular-nums">
+                    <td className="px-4 py-2.5 text-foreground tabular-nums text-xs">
                       {trigger.isBuy 
                         ? `$${parseFloat(trigger.amount).toFixed(2)}`
                         : `${parseFloat(trigger.amount).toFixed(4)} ${getDisplayName(trigger.tradeAsset)}`
                       }
                     </td>
-                    
-                    {/* Status/Cancel */}
                     <td className="px-4 py-2.5 text-right">
                       {trigger.isExecuting ? (
-                        <div className="w-20 flex items-center justify-end gap-1.5 text-primary text-xs font-medium">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <div className="w-20 flex items-center justify-end gap-1.5 text-primary text-[10px] font-medium uppercase tracking-wider">
+                          <Loader2 className="w-3 h-3 animate-spin" />
                           <span>Executing</span>
-                        </div>
-                      ) : cancellingId === trigger.id ? (
-                        <div className="w-20 flex items-center justify-end">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                         </div>
                       ) : (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCancelTrigger(trigger.id) }}
                           disabled={cancellingId !== null}
-                          className="w-20 text-destructive hover:text-destructive/80 text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-end"
+                          className="w-20 text-destructive hover:text-destructive/80 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-end"
                         >
                           Cancel
                         </button>
@@ -444,11 +476,11 @@ export default function HomePage() {
       </div>
       
       {/* Right Panel */}
-      <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-1 overflow-hidden">
+      <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-1 overflow-hidden lg:overflow-visible">
         {/* Spot/Perps Tabs Card */}
         <div className="flex bg-card border border-border rounded-xl overflow-hidden shrink-0">
           <button
-            className="flex-1 px-4 py-3.5 text-sm font-medium transition-colors"
+            className="flex-1 px-4 py-3 text-sm font-medium transition-colors"
             style={{
               backgroundColor: 'rgba(74, 222, 128, 0.2)',
               color: '#4ade80'
@@ -458,7 +490,7 @@ export default function HomePage() {
           </button>
           <button
             disabled
-            className="flex-1 px-4 py-3.5 text-sm font-medium text-muted-foreground/40 cursor-not-allowed"
+            className="flex-1 px-4 py-3 text-sm font-medium text-muted-foreground/40 cursor-not-allowed"
             title="Coming soon"
           >
             Perps
@@ -482,8 +514,7 @@ export default function HomePage() {
         </div>
         
         {/* Account Overview Card */}
-        <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
-          {/* Balances Section */}
+        <div className="flex-1 bg-card border border-border rounded-xl p-3">
           <div className="space-y-1.5 pb-2 border-b border-border/40">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Spot</span>
@@ -496,8 +527,6 @@ export default function HomePage() {
               <span className="text-xs text-muted-foreground tabular-nums">$0.00</span>
             </div>
           </div>
-          
-          {/* Triggers Section */}
           <div className="space-y-1.5 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Spot Triggers</span>
@@ -513,11 +542,11 @@ export default function HomePage() {
         </div>
         
         {/* Portfolio Card */}
-        <div className="h-[210px] bg-card border border-border rounded-xl p-2.5 flex flex-col shrink-0">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Portfolio</div>
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+        <div className="h-[210px] bg-card border border-border rounded-xl p-3 flex flex-col shrink-0">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Portfolio</div>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1 no-scrollbar">
             {spotBalances.length === 0 || spotBalances.filter(bal => parseFloat(bal.total) > 0).length === 0 ? (
-              <div className="text-[10px] text-muted-foreground/60 py-2">No assets</div>
+              <div className="text-[10px] text-muted-foreground/60 py-4 text-center">No assets in wallet</div>
             ) : (
               spotBalances
                 .filter(bal => parseFloat(bal.total) > 0)
@@ -525,7 +554,7 @@ export default function HomePage() {
                   const tokenPrice = prices[bal.symbol]?.price || (bal.symbol === 'USDC' ? 1 : 0)
                   const usdValue = parseFloat(bal.total) * tokenPrice
                   return (
-                    <div key={bal.symbol} className="flex items-center gap-2 py-0.5">
+                    <div key={bal.symbol} className="flex items-center gap-2 py-1">
                       <TokenIcon symbol={bal.symbol} size="xs" />
                       <span className="text-[10px] font-medium text-foreground flex-1">{bal.symbol}</span>
                       <span className="text-[10px] text-muted-foreground tabular-nums">

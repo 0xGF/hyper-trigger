@@ -263,7 +263,7 @@ export function TriggerBuilder({
           <div className="flex items-center gap-2 mb-2">
             <button 
               onClick={() => setActiveModal('watch')}
-              className="flex items-center gap-1.5 h-8 px-2.5 bg-muted hover:bg-accent rounded-lg transition-colors shrink-0"
+              className="flex items-center gap-1.5 h-9 sm:h-8 px-2.5 bg-muted hover:bg-accent rounded-lg transition-colors shrink-0"
             >
               <TokenIcon symbol={watchToken} size="sm" />
               <span className="font-medium text-foreground text-sm">{getDisplayName(watchToken)}</span>
@@ -272,10 +272,10 @@ export function TriggerBuilder({
             
             <span className="text-muted-foreground text-xs shrink-0">is</span>
             
-            <div className="flex items-center flex-1 bg-muted rounded-lg overflow-hidden">
+            <div className="flex items-center flex-1 bg-muted rounded-lg overflow-hidden h-9 sm:h-8">
               <button
                 onClick={() => setState(s => ({ ...s, condition: 'above' }))}
-                className="flex-1 flex items-center justify-center gap-1 h-8 text-xs font-medium transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-full text-xs font-medium transition-colors"
                 style={{
                   backgroundColor: selectedCondition === 'above' ? 'rgba(74, 222, 128, 0.2)' : 'transparent',
                   color: selectedCondition === 'above' ? '#4ade80' : 'var(--muted-foreground)'
@@ -286,7 +286,7 @@ export function TriggerBuilder({
               </button>
               <button
                 onClick={() => setState(s => ({ ...s, condition: 'below' }))}
-                className="flex-1 flex items-center justify-center gap-1 h-8 text-xs font-medium transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 h-full text-xs font-medium transition-colors"
                 style={{
                   backgroundColor: selectedCondition === 'below' ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
                   color: selectedCondition === 'below' ? 'var(--destructive)' : 'var(--muted-foreground)'

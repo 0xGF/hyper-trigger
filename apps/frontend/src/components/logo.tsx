@@ -75,8 +75,11 @@ export function Logo() {
         alt="Logo" 
         width={150} 
         height={24} 
-        className="brightness-0 invert logo-text-animate"
+        className="brightness-0 invert logo-text-animate hidden sm:block"
       />
+      <span className="font-bold text-lg tracking-tight logo-text-animate sm:hidden">
+        HyperTrigger
+      </span>
     </div>
   )
 }
