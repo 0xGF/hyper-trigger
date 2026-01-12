@@ -27,9 +27,8 @@ COPY apps/worker ./apps/worker
 # Build
 RUN pnpm turbo run build --filter=@hyper-trigger/worker
 
-# Set working directory for runtime
-WORKDIR /app/apps/worker
-
+# Stay at /app root so node_modules is accessible (pnpm hoists deps)
 ENV NODE_ENV=production
 
-CMD ["node", "dist/index.js"]
+# Run from root - node_modules are at /app/node_modules
+CMD ["node", "apps/worker/dist/index.js"]

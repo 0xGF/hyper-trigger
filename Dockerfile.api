@@ -29,10 +29,10 @@ RUN cd apps/api && pnpm exec prisma generate
 # Build with turbo (force to avoid cache issues)
 RUN pnpm turbo run build --filter=@hyper-trigger/api --force
 
-# Set working directory and env for runtime
-WORKDIR /app/apps/api
+# Stay at /app root so node_modules is accessible (pnpm hoists deps)
 ENV NODE_ENV=production
 
 EXPOSE 4000
 
-CMD ["node", "dist/src/main.js"]
+# Run from root - node_modules are at /app/node_modules
+CMD ["node", "apps/api/dist/src/main.js"]
