@@ -24,6 +24,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
+# Generate Prisma client before build
+RUN cd apps/api && npx prisma generate
+
 # Build shared and api
 RUN pnpm turbo run build --filter=@hyper-trigger/api
 
@@ -52,8 +55,8 @@ RUN pnpm install --prod --frozen-lockfile
 
 WORKDIR /app/apps/api
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client (use pnpm to use project's Prisma version)
+RUN pnpm exec prisma generate
 
 EXPOSE 4000
 
