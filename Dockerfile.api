@@ -1,6 +1,6 @@
 FROM node:20-alpine AS base
 
-# Cache bust: 2026-01-12-v1
+# Cache bust: 2026-01-12-v2
 ARG CACHEBUST=1
 
 # Install pnpm
@@ -17,17 +17,19 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
 
-# Install all dependencies
+# Install all dependencies (including dev deps for prisma)
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Generate Prisma client before build
-RUN cd apps/api && npx prisma generate
+# Generate Prisma client (in builder where prisma CLI is available)
+WORKDIR /app/apps/api
+RUN pnpm exec prisma generate
 
 # Build shared and api
+WORKDIR /app
 RUN pnpm turbo run build --filter=@hyper-trigger/api
 
 # Production stage
@@ -50,15 +52,15 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
-# Install production dependencies
+# Copy generated Prisma client from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
 WORKDIR /app/apps/api
 
-# Generate Prisma client (use pnpm to use project's Prisma version)
-RUN pnpm exec prisma generate
-
 EXPOSE 4000
 
 CMD ["node", "dist/main.js"]
-
