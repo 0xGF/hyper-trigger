@@ -1,12 +1,11 @@
 FROM node:20-alpine AS base
 
-# Cache bust: 2026-01-12-v3
+# Cache bust: 2026-01-12-v4
 ARG CACHEBUST=1
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@8.10.0 --activate
 
-# Single stage build (simpler, works with pnpm workspaces)
 FROM base AS builder
 WORKDIR /app
 
@@ -25,16 +24,16 @@ COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
 # Generate Prisma client
+RUN cd apps/api && pnpm exec prisma generate
+
+# Build with turbo (force to avoid cache issues)
+RUN pnpm turbo run build --filter=@hyper-trigger/api --force
+
+# Verify build output exists
+RUN ls -la apps/api/dist/ && test -f apps/api/dist/main.js
+
+# Set working directory and env for runtime
 WORKDIR /app/apps/api
-RUN pnpm exec prisma generate
-
-# Build
-WORKDIR /app
-RUN pnpm turbo run build --filter=@hyper-trigger/api
-
-# Set working directory for runtime
-WORKDIR /app/apps/api
-
 ENV NODE_ENV=production
 
 EXPOSE 4000
